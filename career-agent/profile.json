@@ -19,8 +19,11 @@
     "draft_cover_letter": true,
     "read_email": true,
     "create_email_drafts": true,
-    "send_email": false,
-    "auto_apply": false,
-    "require_confirmation_for": ["send_email", "apply"]
+    "send_application_email": true,
+    "send_conversation_email": false,
+    "auto_apply": true,
+    "require_confirmation_for": ["conversation_email"],
+    "max_daily_applications": 10,
+    "min_fit": "medium"
   }
 }

@@ -2,20 +2,21 @@
 
 On each heartbeat:
 
-1. Read USER.md and applications/tracker.md
-2. Search for new IT jobs matching target titles
-3. Skip jobs already in the tracker
-4. Add new matches to applications/inbox.md
-5. Check readable job/recruiter email for replies
-6. Update applications/tracker.md statuses for replies
-7. Do not apply
-8. Do not send email
-9. If new jobs or replies exist, send Sharon a short digest
-10. If nothing new, reply HEARTBEAT_OK
+1. Read USER.md, resume/BASE.md, and applications/tracker.md
+2. If profile/resume facts are still empty, do not apply. Tell Sharon what is missing.
+3. Search for new IT jobs matching target titles
+4. Skip jobs already applied
+5. Auto-apply to medium/high fit IT jobs, up to 10 today
+6. Tailor resume and cover letter first, omit location
+7. Check readable job/recruiter email for replies
+8. Draft conversation replies. Do not send those replies.
+9. Update applications/tracker.md
+10. Send Sharon a digest
 
 Digest format:
 
 - New jobs: N
-- Replies needing Sharon: N
-- Drafts waiting approval: N
-- Top 3 jobs as bullets
+- Applied: N
+- Skipped: N
+- Replies needing Sharon to send: N
+- Top applied jobs as bullets

@@ -1,40 +1,41 @@
 ---
 name: career-guard
-description: Hard gates for CareerBot. Use before any email send, job apply, or resume export. Blocks outbound actions unless Sharon confirmed the exact item.
+description: Policy for CareerBot auto-apply plus email gates. Use before apply, email send, or resume export.
 ---
 
 # Career guard
 
-Apply these checks before any outbound action.
+## Auto-apply allowed
 
-## Allowed without confirmation
+When USER.md and resume/BASE.md are filled, CareerBot may:
 
-- Job search
-- Fit scoring
-- Resume draft files
-- Cover letter draft files
-- Reading email
-- Creating email drafts
-- Tracker updates
+- Search jobs
+- Score fit
+- Tailor resume and cover letter
+- Submit Easy Apply / job-board applications
+- Send application emails (resume + cover letter to the posting apply address)
+- Log applications
 
-## Blocked without exact confirmation
+Limits:
 
-- gmail_send_email
-- gmail_send_draft
-- gmail_reply_to_thread
-- gmail_forward_message
-- SMTP send
-- LinkedIn Easy Apply submit
-- Indeed/Glassdoor one-click apply
-- Any HTTP form post that submits an application
-- Auto-apply scripts
+- IT roles only
+- Fit medium or high
+- Max 10 applies per calendar day
+- Skip unpaid, scam, and dealbreakers
+- Skip duplicates already marked applied
 
-Confirmation must name the thing, for example:
+## Still blocked without exact confirmation
 
-- send the Amazon draft
-- apply to the Acme backend role
+- Recruiter conversation replies
+- Follow-up emails that are not the original application
+- Forwarding mail
+- Changing LinkedIn/Indeed public profile
+- .env / OAuth / cookie changes
 
-A general "go ahead" or "automate applications" is not enough.
+Confirmation examples for conversation mail:
+
+- send the Amazon reply
+- approved
 
 ## Resume export
 
@@ -44,10 +45,6 @@ Before writing a resume or cover letter:
 - No "Location:" line
 - Relocate-ready may appear only if Sharon asked for that sentence
 
-## If a job skill wants to auto-send
+## If profile is empty
 
-Stop. Convert the action into:
-
-1. drafted files
-2. a Telegram summary
-3. wait for confirmation
+Do not auto-apply. Ask Sharon to fill USER.md and resume/BASE.md.

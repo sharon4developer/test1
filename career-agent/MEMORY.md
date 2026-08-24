@@ -7,7 +7,8 @@ Sharon wants an automated IT job-search agent that:
 - finds jobs
 - writes resume and cover letters
 - reads reply email
-- never sends email or applications without confirmation
+- auto-applies to matching IT jobs (cap 10/day)
+- recruiter conversation emails still wait for confirmation
 - omits location on resume because Sharon is willing to relocate
 
 ## Model / platform

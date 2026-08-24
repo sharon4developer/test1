@@ -56,4 +56,5 @@ Fill this once. CareerBot reads it every session.
 
 - Inbox CareerBot may read:
 - CareerBot may create drafts
-- CareerBot may not send unless Sharon replies: send it / approved / apply to this job
+- CareerBot may send application emails as part of auto-apply
+- CareerBot may not send recruiter conversation replies unless Sharon replies: send it / approved

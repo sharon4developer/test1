@@ -6,9 +6,10 @@ This agent is separate from Tony, HomeBot, SplitEasy, and RuView.
 
 - Finds IT jobs
 - Drafts resume and cover letters with no location line
+- Auto-applies to matching IT jobs (up to 10/day)
 - Reads job/recruiter email
-- Creates email drafts
-- Never sends email or applies until Sharon confirms that exact item
+- Drafts conversation replies
+- Does not send recruiter follow-up emails until Sharon confirms
 
 ## 1. Create the OpenClaw agent
 
@@ -28,24 +29,16 @@ mkdir -p ~/.openclaw/workspace-career/cover-letters/out
 mkdir -p ~/.openclaw/workspace-career/resume/out
 ```
 
-If this repo is not on the Beelink, copy the `career-agent` directory over first.
-
 ```bash
 openclaw agents set-identity --agent career --from-identity --workspace ~/.openclaw/workspace-career
 openclaw config set agents.entries.career.model "google/gemini-3.5-flash-lite"
 ```
 
-If your OpenClaw version uses `agents.list` instead of `agents.entries`, set the model on that career row.
-
-Fill `~/.openclaw/workspace-career/USER.md` and `resume/BASE.md` before the first search.
+Fill `USER.md` and `resume/BASE.md` before enabling apply. Empty profile means no applies.
 
 ## 2. Dedicated Telegram bot
 
 Do not reuse Tony or HomeBot.
-
-1. In Telegram, open BotFather
-2. Create a bot, for example CareerSharonBot
-3. Copy the token into OpenClaw, not into chat
 
 ```bash
 openclaw config set channels.telegram.accounts.career.botToken "PASTE_TOKEN"
@@ -55,81 +48,66 @@ openclaw agents bind --agent career --bind telegram:career
 openclaw gateway restart
 ```
 
-Confirm:
-
 ```bash
 openclaw agents list --bindings
 ```
 
-You want career bound only to `telegram:career`.
-
 ## 3. Skills
-
-Install search help, not auto-send:
 
 ```bash
 openclaw skills install @sharbelayy/job-hunter
+openclaw skills install @veeky-kumar/job-auto-apply
 ```
 
-Optional Gmail read/draft, after you approve OAuth:
+Optional Gmail, after you approve OAuth:
 
 ```bash
 openclaw skills install @hith3sh/gmail-email
 ```
 
-Do not install auto-apply/auto-send skills.
+If OpenClaw stores skill config in `openclaw.json`, use:
 
-Copy the guard skill into the career workspace if it is not already there:
+- auto_apply: true
+- require_confirmation: false for job applies
+- max_daily_applications: 10
+- send conversation email: still false
 
-```bash
-mkdir -p ~/.openclaw/workspace-career/skills/career-guard
-cp skills/career-guard/SKILL.md ~/.openclaw/workspace-career/skills/career-guard/SKILL.md
-```
+LinkedIn/Indeed auto-apply usually needs Sharon to log those accounts in on the Beelink. That is a Gate Secrets/account step. Do not paste cookies into chat.
 
 ## 4. Email policy
 
-Allowed:
+Auto:
 
-- read inbox
-- create drafts
+- send application emails that are the job apply itself
 
-Blocked until Sharon says send it / approved / apply to this job:
+Still confirm:
 
-- send email
-- send draft
-- reply-send
-- Easy Apply submit
+- recruiter thread replies
+- follow-ups
+- forwards
 
 ## 5. Daily automation
 
-Heartbeat already describes the loop. Optional cron, twice a day:
-
 ```bash
 openclaw cron add \
-  --name career-digest \
+  --name career-auto-apply \
   --agent career \
   --every 12h \
-  --message "Follow HEARTBEAT.md. Do not send email. Do not apply."
+  --message "Follow HEARTBEAT.md. Auto-apply matching IT jobs up to 10 today. Do not send recruiter conversation emails."
 ```
 
-## 6. First messages in Telegram
-
-Send to CareerBot:
+## 6. First Telegram messages
 
 ```text
-Read SOUL.md USER.md AGENTS.md. Confirm you will not send email or apply without my confirmation. Confirm resumes will omit location.
+Read SOUL.md USER.md AGENTS.md. Confirm you auto-apply matching IT jobs, omit location on resumes, and still wait before sending recruiter conversation emails.
 ```
 
-Then:
-
 ```text
-Fill nothing. Ask me the missing USER.md fields one batch at a time.
+Ask me the missing USER.md fields. Do not apply until the profile and base resume have real data.
 ```
 
-Then:
-
 ```text
-Find 10 IT jobs matching my target titles. Do not apply. Give fit notes and draft a resume plus cover letter for the top 1 only.
+Search IT jobs and auto-apply to the ones that fit. Report what you applied to.
 ```
 
 ## 7. Isolation checks
@@ -138,5 +116,3 @@ Find 10 IT jobs matching my target titles. Do not apply. Give fit notes and draf
 openclaw agents list --bindings
 ls ~/.openclaw/workspace-career
 ```
-
-CareerBot must use `workspace-career`, not Tony or HomeBot workspaces.
