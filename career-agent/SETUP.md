@@ -54,18 +54,38 @@ openclaw agents list --bindings
 
 ## 3. Skills
 
-OpenClaw 2026.4.1 rejects `@owner/slug`. Use the bare slug:
+OpenClaw 2026.4.1 rejects `@owner/slug`, and bare `job-auto-apply` is ambiguous.
+
+job-hunter:
 
 ```bash
 openclaw skills install job-hunter
-openclaw skills install job-auto-apply
 ```
 
-If that still fails:
+job-auto-apply: use ClawHub CLI for veeky-kumar, then install the local folder. Do not install thcjp.
 
 ```bash
-npx clawhub install job-hunter
-npx clawhub install job-auto-apply
+cd /tmp
+rm -rf clawhub-job-auto-apply
+mkdir clawhub-job-auto-apply
+cd clawhub-job-auto-apply
+npx clawhub@latest install @veeky-kumar/job-auto-apply
+openclaw skills install ./skills/job-auto-apply
+```
+
+If the folder name differs, install whatever directory contains `SKILL.md`:
+
+```bash
+find . -name SKILL.md
+openclaw skills install ./skills/job-auto-apply
+```
+
+Copy both skills into the career workspace too:
+
+```bash
+mkdir -p ~/.openclaw/workspace-career/skills
+cp -a /var/www/html/skills/job-hunter ~/.openclaw/workspace-career/skills/ 2>/dev/null || true
+cp -a ./skills/job-auto-apply ~/.openclaw/workspace-career/skills/
 ```
 
 Optional Gmail, after you approve OAuth:
