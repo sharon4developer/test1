@@ -54,15 +54,24 @@ openclaw agents list --bindings
 
 ## 3. Skills
 
+OpenClaw 2026.4.1 rejects `@owner/slug`. Use the bare slug:
+
 ```bash
-openclaw skills install @sharbelayy/job-hunter
-openclaw skills install @veeky-kumar/job-auto-apply
+openclaw skills install job-hunter
+openclaw skills install job-auto-apply
+```
+
+If that still fails:
+
+```bash
+npx clawhub install job-hunter
+npx clawhub install job-auto-apply
 ```
 
 Optional Gmail, after you approve OAuth:
 
 ```bash
-openclaw skills install @hith3sh/gmail-email
+openclaw skills install gmail-email
 ```
 
 If OpenClaw stores skill config in `openclaw.json`, use:
