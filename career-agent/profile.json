@@ -1,0 +1,26 @@
+{
+  "candidate": {
+    "name": "Sharon",
+    "omit_location": true,
+    "ready_to_relocate": true,
+    "target_roles": [],
+    "seniority": "",
+    "skills": [],
+    "dealbreakers": ["non-IT", "unpaid", "scam"]
+  },
+  "search": {
+    "include_remote": true,
+    "do_not_require_current_city": true,
+    "sources": ["linkedin", "indeed", "glassdoor", "wellfound"]
+  },
+  "automation": {
+    "search": true,
+    "draft_resume": true,
+    "draft_cover_letter": true,
+    "read_email": true,
+    "create_email_drafts": true,
+    "send_email": false,
+    "auto_apply": false,
+    "require_confirmation_for": ["send_email", "apply"]
+  }
+}
