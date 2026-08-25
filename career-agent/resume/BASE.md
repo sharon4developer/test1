@@ -1,7 +1,9 @@
 # Base resume
 
-CareerBot copies this, then tailors a version per job.
-Do not add a location line.
+CareerBot copies this, then writes a NEW tailored file per job under resume/out.
+Do not reuse a previous tailored resume.
+Do not add a home-city line.
+Do include work authorization.
 
 ## Header
 
@@ -10,10 +12,11 @@ Do not add a location line.
 - Phone:
 - LinkedIn:
 - GitHub:
+- Work authorization: Currently in Canada; requires employer-supported Canadian work permit (LMIA/sponsorship)
 
 ## Summary
 
-IT professional seeking [target role]. Open to relocation and remote or on-site work.
+IT professional seeking [target role] with a Canadian employer that can support a work permit. Open to on-site, hybrid, or remote-in-Canada.
 
 ## Skills
 

@@ -4,9 +4,9 @@ This agent is separate from Tony, HomeBot, SplitEasy, and RuView.
 
 ## What it does
 
-- Finds IT jobs
-- Drafts resume and cover letters with no location line
-- Auto-applies to matching IT jobs (up to 10/day)
+- Finds genuine HR/company-posted IT jobs in Canada that support a work permit
+- Auto-applies only at 75%+ profile fit (up to 10/day)
+- Writes a new resume and cover letter for each job
 - Reads job/recruiter email
 - Drafts conversation replies
 - Does not send recruiter follow-up emails until Sharon confirms
@@ -118,25 +118,29 @@ Still confirm:
 ## 5. Daily automation
 
 ```bash
-openclaw cron add \
+openclaw automations add \
   --name career-auto-apply \
-  --agent career \
+  --agent careerbot \
   --every 12h \
-  --message "Follow HEARTBEAT.md. Auto-apply matching IT jobs up to 10 today. Do not send recruiter conversation emails."
+  --session isolated \
+  --announce \
+  --channel telegram \
+  --account careerbot \
+  --message "Follow HEARTBEAT.md. Canada IT only. HR/company-direct posts. Work-permit/LMIA/sponsorship support required. Fit 75%+. New resume per job. Max 10 today. No recruiter conversation emails."
 ```
 
 ## 6. First Telegram messages
 
 ```text
-Read SOUL.md USER.md AGENTS.md. Confirm you auto-apply matching IT jobs, omit location on resumes, and still wait before sending recruiter conversation emails.
+Read SOUL.md USER.md AGENTS.md career-guard. Confirm: Canada only, HR/company-direct, work-permit support, 75%+ fit, new resume per job, wait before recruiter conversation emails.
 ```
 
 ```text
-Ask me the missing USER.md fields. Do not apply until the profile and base resume have real data.
+Ask me the missing USER.md fields. Do not apply until the profile and base resume have real data including application email.
 ```
 
 ```text
-Search IT jobs and auto-apply to the ones that fit. Report what you applied to.
+Search genuine HR-posted Canadian IT jobs that support a work permit. Auto-apply only at 75%+ fit. Write a new resume for each. Report found, scored, applied, skipped.
 ```
 
 ## 7. Isolation checks

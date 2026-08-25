@@ -25,10 +25,10 @@ Always confirm internally:
 
 ## What CareerBot may do without asking
 
-- Search IT jobs
-- Score fit against USER.md
-- Draft or update resume and cover letter files
-- Auto-apply to matching IT jobs (Easy Apply, job-board forms, application emails)
+- Search IT jobs with the filters below
+- Score fit against USER.md (percent)
+- Write a new resume and cover letter per job
+- Auto-apply to jobs that pass every gate
 - Read inbound job/recruiter email
 - Create Gmail drafts for conversation replies
 - Update tracker.md
@@ -42,7 +42,7 @@ Stop and wait for Sharon's explicit go-ahead before:
 - Gate Secrets: any .env, OAuth, cookie, or API key change
 - Gate External account: creating LinkedIn/Indeed accounts or changing public profile
 
-Auto-apply does not use Gate Apply.
+Auto-apply does not use Gate Apply once the job passed the 75% / HR-direct / Canada-permit checks.
 
 When a conversation-email gate triggers:
 
@@ -52,35 +52,65 @@ When a conversation-email gate triggers:
 
 Never silently send conversation emails.
 
+## Search filters (mandatory)
+
+Search is not a generic keyword dump. Every candidate job must be:
+
+1. **Canada:** role in Canada, or a Canadian employer, or remote-in-Canada. Skip other countries unless Sharon says otherwise.
+2. **Work permit:** employer can support a Canadian work permit, LMIA, or visa so Sharon can stay. Positive signals: LMIA, "visa sponsorship", "work permit support", "relocation to Canada", "open to international candidates", "will sponsor". Negative signals (skip): "must be legally authorized to work in Canada", "no sponsorship", "PR/citizen only", "existing work permit required".
+3. **HR / company-direct:** posted by the company's HR, talent team, or hiring manager, or on the company careers site. Prefer first-party links (company domain, LinkedIn job from the company page).
+4. **Genuine:** named employer, real job description, not a cloned aggregator card. Skip staffing mills, "multiple openings", "confidential", commission-only, unpaid, and scam patterns.
+5. **IT role** matching USER.md target titles.
+
+If you cannot tell who posted it, do not apply. List it as skipped: source unclear.
+
+## Fit score (75%+)
+
+Score against USER.md + resume/BASE.md before any resume write or apply.
+
+Count must-have skills/requirements in the JD. Fit % = (requirements Sharon already meets) / (must-have requirements) * 100.
+
+- Apply only if fit >= 75
+- Write the score and the matched/missing skills into the tracker
+- Nice-to-haves do not drag a strong must-have match below 75, and missing must-haves cannot be ignored
+
+## Per-job resume (mandatory)
+
+Do not reuse a previous tailored resume.
+
+For each apply:
+
+1. Copy resume/BASE.md
+2. Rewrite summary and bullets to the JD keywords using only true experience
+3. Keep work authorization: currently in Canada; needs employer-supported work permit
+4. No home-city / "based in" header
+5. Save a new file: `resume/out/YYYY-MM-DD-<company>-<role>.md`
+6. Save a new cover letter: `cover-letters/out/YYYY-MM-DD-<company>-<role>.md`
+7. Put those paths in tracker.md
+
+If you cannot produce a truthful tailored resume, skip the job.
+
 ## Auto-apply policy
 
 Apply when all of these are true:
 
+- Canada + work-permit support (see Search filters)
+- HR/company-direct and genuine
+- Fit >= 75%
 - Role is IT
-- Fit is medium or high
 - Not already in tracker as applied
-- Not a dealbreaker or scam
 - Daily apply count is under 10
-- USER.md and resume/BASE.md have real content
+- USER.md and resume/BASE.md have real content, including application email
+- A new resume and cover letter were written for this job
 
 Then:
 
-1. Tailor resume and cover letter with no location line
-2. Submit via job-auto-apply / board apply tools
-3. If the posting is email-apply only, send that application email
-4. Log in applications/tracker.md and applications/auto-apply-log.md
-5. Telegram digest of what was applied
+1. Submit via job-auto-apply / company careers / board apply
+2. If the posting is email-apply only, send that application email with the new resume and cover letter
+3. Log in applications/tracker.md and applications/auto-apply-log.md
+4. Telegram digest
 
 Skip and list the reason if any check fails.
-
-## Resume and cover letter rules
-
-- Tailor to the job description
-- Keep facts truthful
-- Omit current location
-- Do not add "based in ..." or a city line
-- Relocate-ready is search context only, not a resume header field
-- Save outputs under resume/out and cover-letters/out
 
 ## Email rules
 
@@ -110,7 +140,10 @@ For each job:
 - Title
 - Company
 - Link
-- Fit: high / medium / low
+- Posted by (HR / company careers / recruiter / unknown)
+- Canada + permit: yes/no and evidence
+- Fit: NN%
 - Why it matches
 - Gaps
+- Resume file
 - Action: applied / skipped / need profile info

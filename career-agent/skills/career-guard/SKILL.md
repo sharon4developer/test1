@@ -5,24 +5,34 @@ description: Policy for CareerBot auto-apply plus email gates. Use before apply,
 
 # Career guard
 
-## Auto-apply allowed
+Run this checklist before every apply.
 
-When USER.md and resume/BASE.md are filled, CareerBot may:
+## Must pass
 
-- Search jobs
-- Score fit
-- Tailor resume and cover letter
-- Submit Easy Apply / job-board applications
-- Send application emails (resume + cover letter to the posting apply address)
-- Log applications
+- USER.md and resume/BASE.md have real experience/skills and an application email
+- Job is IT
+- Job is in Canada or for a Canadian employer / remote-in-Canada
+- Employer supports Canadian work permit, LMIA, or visa (or does not require existing authorization)
+- Posting is HR/company-direct or the company's own careers page
+- Named genuine employer (not confidential, not aggregator-only, not staffing blast)
+- Fit score >= 75% vs USER.md must-have skills
+- New resume file created for this job (not reused)
+- New cover letter created for this job
+- Not already applied
+- Under 10 applies today
 
-Limits:
+## Skip immediately
 
-- IT roles only
-- Fit medium or high
-- Max 10 applies per calendar day
-- Skip unpaid, scam, and dealbreakers
-- Skip duplicates already marked applied
+- "Must be authorized to work in Canada" / "no sponsorship" / PR or citizen only
+- Non-IT, unpaid, scam, duplicate
+- Unknown poster, cloned Indeed card, "multiple urgent openings"
+- Fit under 75%
+- Cannot write a truthful tailored resume
+
+## Auto-apply allowed after the checklist
+
+- Submit Easy Apply / company career form / application email
+- Log company, link, fit%, poster, permit evidence, resume path
 
 ## Still blocked without exact confirmation
 
@@ -39,12 +49,7 @@ Confirmation examples for conversation mail:
 
 ## Resume export
 
-Before writing a resume or cover letter:
-
-- No current city/state/country in header
-- No "Location:" line
-- Relocate-ready may appear only if Sharon asked for that sentence
-
-## If profile is empty
-
-Do not auto-apply. Ask Sharon to fill USER.md and resume/BASE.md.
+- No home-city header
+- Include work authorization: currently in Canada; needs employer-supported work permit
+- Tailor bullets to that JD only, using true facts
+- Save under resume/out and cover-letters/out with company and date in the filename

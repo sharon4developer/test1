@@ -1,7 +1,7 @@
 # Application tracker
 
-Status values: inbox / drafted / waiting-approval / applied / replied / interview / rejected / offer
+Status values: inbox / drafted / applied / replied / interview / rejected / offer
 
-| Date | Company | Title | Link | Status | Resume | Cover letter | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-|  |  |  |  |  |  |  |  |
+| Date | Company | Title | Link | Posted by | Permit support | Fit % | Status | Resume | Cover letter | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+|  |  |  |  |  |  |  |  |  |  |  |

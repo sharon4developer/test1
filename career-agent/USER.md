@@ -9,15 +9,25 @@ Fill this once. CareerBot reads it every session.
 - Phone:
 - LinkedIn:
 - GitHub / portfolio:
-- Work authorization:
+- Work authorization: currently in Canada; needs employer-supported work permit (LMIA / visa / employer-specific permit) to stay
 - Notice period / start date:
 
-## Location policy
+## Location and permit policy
 
-- Do not print current location on resume or cover letter
-- Ready to relocate: yes
-- Remote OK: yes / no / hybrid
-- Target countries/regions if needed for search only, not for the resume header:
+- Currently in Canada
+- Needs a job that supports a permit to stay (LMIA, work permit, visa sponsorship)
+- Do not print a home-city line on resume or cover letter
+- Do print work authorization: currently in Canada; requires employer-supported Canadian work permit
+- Ready to relocate inside Canada: yes
+- Remote OK if the employer is Canadian and can support a permit: yes
+- Target country for search: Canada only
+
+## Genuine posting policy
+
+- Prefer jobs posted by company HR / talent acquisition / hiring manager, or the company careers page
+- Skip generic aggregator blasts, anonymous employers, and staffing-mill spam
+- Apply only if fit vs profile is 75% or higher
+- Write a new resume and cover letter for every job
 
 ## Target roles
 
@@ -49,8 +59,8 @@ Fill this once. CareerBot reads it every session.
 ## Dealbreakers
 
 - Companies or industries to skip:
-- Must-have: IT role
-- Must-not: unpaid / unclear scam postings
+- Must-have: IT role, Canada, work-permit/LMIA/sponsorship support, HR or company-direct posting, 75%+ fit
+- Must-not: unpaid, scam, no-sponsorship, PR/citizen-only, aggregator-only, confidential employer
 
 ## Email
 
