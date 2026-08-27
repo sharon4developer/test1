@@ -4,10 +4,11 @@
 
 Sharon wants an automated job-search agent that:
 
-- searches genuine HR/company-posted jobs only (not generic blasts)
+- searches genuine, full-time, HR/company-posted jobs only (not generic blasts)
 - targets Saskatchewan first (priority: Moose Jaw, Regina), rest of Canada as fallback
-- matches real experience: retail management (7-Eleven Assistant Store Manager) and direct support/community services (Direct Support Professional) — not restricted to IT
-- stays in Canada and needs employer support for PR (SINP) or, as a fallback, a work permit/LMIA/visa
+- open to any job/role, not restricted to a fixed title list — real background is retail management (7-Eleven Assistant Store Manager) and direct support/community services (Direct Support Professional), used for truthful resume writing, not as a search filter
+- stays in Canada and needs employer support for PR (permanent residency) — hard requirement, not just preferred; work-permit-only jobs no longer qualify
+- checks employer public reviews before applying; skips employers with bad reviews
 - auto-applies only at 75%+ profile fit (cap 10/day)
 - writes a new resume and cover letter for every job
 - reads reply email

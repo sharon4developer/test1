@@ -43,7 +43,7 @@ Stop and wait for Sharon's explicit go-ahead before:
 - Gate Secrets: any .env, OAuth, cookie, or API key change
 - Gate External account: creating LinkedIn/Indeed accounts or changing public profile
 
-Auto-apply does not use Gate Apply once the job passed the 75% / HR-direct / Canada-PR-or-permit checks.
+Auto-apply does not use Gate Apply once the job passed the 75% / HR-direct / PR-required / full-time / good-reviews checks.
 
 When a conversation-email gate triggers:
 
@@ -58,10 +58,11 @@ Never silently send conversation emails.
 Search is not a generic keyword dump. Every candidate job must be:
 
 1. **Saskatchewan-first, Canada fallback:** search Moose Jaw and Regina, SK first, then other Saskatchewan cities, then remote-in-Canada / rest of Canada if Saskatchewan results are thin. Skip other countries unless Sharon says otherwise.
-2. **PR or work permit:** employer can support PR (ideally via SINP) or, as a fallback, a Canadian work permit, LMIA, or visa so Sharon can stay. Positive signals: SINP, "PR support", "permanent residency sponsorship", LMIA, "visa sponsorship", "work permit support", "relocation to Saskatchewan/Canada", "open to international candidates", "will sponsor". Negative signals (skip): "must be legally authorized to work in Canada", "no sponsorship", "PR/citizen only", "existing work permit required".
-3. **HR / company-direct:** posted by the company's HR, talent team, or hiring manager, or on the company careers site. Prefer first-party links (company domain, LinkedIn job from the company page).
-4. **Genuine:** named employer, real job description, not a cloned aggregator card. Skip staffing mills, "multiple openings", "confidential", commission-only, unpaid, and scam patterns.
-5. **Role match:** matches USER.md target titles (retail management/supervisory or direct support/community services). Not restricted to IT.
+2. **PR support required (hard rule):** employer must support PR (permanent residency) — ideally via SINP, but any employer-backed PR pathway counts. Positive signals: SINP, "PR support", "permanent residency sponsorship", "pathway to permanent residency", "relocation to Saskatchewan/Canada with PR support", "open to international candidates seeking PR". Negative signals (skip): "must be legally authorized to work in Canada", "no sponsorship", "PR/citizen only", "existing work permit required", or a posting that only offers a work permit/LMIA with **no mention of a PR pathway**. A plain work-permit-only job is not a fallback anymore — skip it.
+3. **Full-time only:** skip part-time, casual, contract, gig, and seasonal postings.
+4. **HR / company-direct:** posted by the company's HR, talent team, or hiring manager, or on the company careers site. Prefer first-party links (company domain, LinkedIn job from the company page).
+5. **Genuine and well-reviewed:** named employer, real job description, not a cloned aggregator card. Skip staffing mills, "multiple openings", "confidential", commission-only, unpaid, and scam patterns. Before applying, check the employer's public reviews (Glassdoor/Indeed/Google or similar) — skip employers with poor/negative reviews or serious complaint patterns (unpaid wages, unsafe conditions, scam reports). If reviews can't be found, note that in the tracker and flag it to Sharon rather than silently skipping.
+6. **Role:** open to any job/role, not restricted to a fixed title list — but only apply where a truthful, non-fabricated resume can be written from Sharon's real experience (see Per-job resume rules and career-guard).
 
 If you cannot tell who posted it, do not apply. List it as skipped: source unclear.
 
@@ -95,10 +96,11 @@ If you cannot produce a truthful tailored resume, skip the job.
 
 Apply when all of these are true:
 
-- Saskatchewan-first (or Canada fallback) + PR/permit support (see Search filters)
-- HR/company-direct and genuine
+- Saskatchewan-first (or Canada fallback) + PR support confirmed (see Search filters — work-permit-only does not qualify)
+- Full-time
+- HR/company-direct and genuine, with acceptable/good public reviews (or reviews unavailable and flagged)
 - Fit >= 75%
-- Role matches USER.md target roles (retail management or direct support/community services)
+- A truthful resume can be written from Sharon's real experience (role is not restricted to a fixed title list)
 - Not already in tracker as applied
 - Daily apply count is under 10
 - USER.md and resume/BASE.md have real content, including application email
@@ -143,7 +145,9 @@ For each job:
 - Link
 - Posted by (HR / company careers / recruiter / unknown)
 - Location: city/province, and Saskatchewan-priority: yes/no
-- PR/permit support: yes/no and evidence
+- Full-time: yes/no
+- PR support: yes/no and evidence (work-permit-only counts as no)
+- Employer reviews: good / mixed / bad / not found
 - Fit: NN%
 - Why it matches
 - Gaps

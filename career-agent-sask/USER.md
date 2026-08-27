@@ -17,31 +17,32 @@ This is the Saskatchewan-first retail-management/direct-support track, separate 
 ## Location and permit policy
 
 - Currently in Canada
-- Needs a job that supports PR (permanent residency), ideally via the Saskatchewan Immigrant Nominee Program (SINP); a straight work permit/LMIA is an acceptable fallback if PR support is not offered
+- Needs a job that supports PR (permanent residency) — this is now a **hard requirement**, not just preferred. Ideally via the Saskatchewan Immigrant Nominee Program (SINP), but any employer-supported PR pathway counts.
+- A plain work permit/LMIA with **no PR pathway at all** is no longer an acceptable fallback — skip those postings.
 - Do not print a home-city line on resume or cover letter
-- Do print work authorization: currently in Canada; seeking employer support for PR (SINP) or a Canadian work permit
+- Do print work authorization: currently in Canada; seeking employer support for PR (SINP or other PR pathway)
 - Ready to relocate inside Canada: yes
 - Target province: Saskatchewan
 - Priority cities (search and apply first): Moose Jaw, Regina
 - Other Saskatchewan cities: acceptable, lower priority
-- Remote OK if the employer is Canadian and can support PR/permit: yes
+- Remote OK if the employer is Canadian and can support PR: yes
 - Target country for search: Canada, Saskatchewan-first
 
 ## Genuine posting policy
 
 - Prefer jobs posted by company HR / talent acquisition / hiring manager, or the company careers page
 - Skip generic aggregator blasts, anonymous employers, and staffing-mill spam
+- Before applying, check the employer's public reviews (Glassdoor, Indeed, Google reviews, or similar). Skip employers with poor/negative reviews or a pattern of serious complaints (unpaid wages, unsafe conditions, scam reports). If no reviews can be found, note that in the tracker rather than skip outright, but flag it for Sharon.
 - Apply only if fit vs profile is 75% or higher
 - Write a new resume and cover letter for every job
 
 ## Target roles
 
-- Primary titles: Assistant Store Manager, Retail Store Manager, Retail Supervisor, Direct Support Professional, Community Support Worker, Disability Support Worker
-- Secondary titles: Shift Supervisor, Customer Service Manager, Support Worker, Care Aide, Residential Support Worker
+- Open to **any job/role** in Saskatchewan (priority Moose Jaw, Regina) — not restricted to retail management or direct support titles. Cast a wide net.
+- Must still be a truthful fit: CareerSaskBot can only apply where it can write a resume using Sharon's real experience below without fabricating skills or history — see Experience bullets.
 - Seniority: entry to supervisory/assistant-manager level
-- Employment type: full-time
+- Employment type: **full-time only** — skip part-time, casual, contract, and gig postings
 - Salary range (optional):
-- Not restricted to IT — match real experience below (retail management, direct support/community services)
 
 ## Skills
 
@@ -65,8 +66,8 @@ This is the Saskatchewan-first retail-management/direct-support track, separate 
 ## Dealbreakers
 
 - Companies or industries to skip:
-- Must-have: role matches Target roles above (retail management or direct support/community services), Saskatchewan (priority Moose Jaw, Regina), PR support (SINP) or work-permit/LMIA support, HR or company-direct posting, 75%+ fit
-- Must-not: unpaid, scam, no-sponsorship, PR/citizen-only, aggregator-only, confidential employer
+- Must-have: full-time, Saskatchewan (priority Moose Jaw, Regina), PR support (hard requirement — any PR pathway, ideally SINP), HR or company-direct posting, genuine employer with good/acceptable public reviews, 75%+ truthful fit
+- Must-not: unpaid, scam, no PR pathway at all (work-permit-only does not qualify), PR/citizen-only, aggregator-only, confidential employer, part-time/casual/contract, employer with bad reviews
 
 ## Email
 

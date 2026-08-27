@@ -10,12 +10,13 @@ Run this checklist before every apply.
 ## Must pass
 
 - USER.md and resume/BASE.md have real experience/skills and an application email
-- Job matches a USER.md target role (retail management/supervisory or direct support/community services)
+- Job is full-time (not part-time/casual/contract/gig)
 - Job is in Saskatchewan (priority: Moose Jaw, Regina) or, as fallback, in Canada / for a Canadian employer / remote-in-Canada
-- Employer supports PR (ideally SINP) or, as fallback, a Canadian work permit, LMIA, or visa (or does not require existing authorization)
+- Employer supports PR (permanent residency) — hard requirement. Ideally SINP, but any employer-backed PR pathway counts. A work-permit/LMIA-only posting with no PR pathway does NOT pass this check.
 - Posting is HR/company-direct or the company's own careers page
 - Named genuine employer (not confidential, not aggregator-only, not staffing blast)
-- Fit score >= 75% vs USER.md must-have skills
+- Employer has acceptable/good public reviews (Glassdoor/Indeed/Google or similar), or reviews were not found and this is flagged to Sharon
+- Fit score >= 75% vs USER.md must-have skills, using a truthful resume (any role is fine, but the resume cannot fabricate experience)
 - New resume file created for this job (not reused)
 - New cover letter created for this job
 - Not already applied
@@ -24,15 +25,18 @@ Run this checklist before every apply.
 ## Skip immediately
 
 - "Must be authorized to work in Canada" / "no sponsorship" / PR or citizen only
-- Role does not match USER.md target roles, unpaid, scam, duplicate
+- Work permit/LMIA offered but no PR pathway mentioned anywhere in the posting
+- Part-time, casual, contract, gig, or seasonal
+- Unpaid, scam, duplicate
 - Unknown poster, cloned Indeed card, "multiple urgent openings"
+- Employer has clearly bad/negative public reviews (unpaid wages, unsafe conditions, scam reports)
 - Fit under 75%
 - Cannot write a truthful tailored resume
 
 ## Auto-apply allowed after the checklist
 
 - Submit Easy Apply / company career form / application email
-- Log company, link, fit%, poster, permit evidence, resume path
+- Log company, link, fit%, poster, PR evidence, review status, resume path
 
 ## Still blocked without exact confirmation
 

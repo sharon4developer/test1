@@ -16,7 +16,7 @@ Do include work authorization.
 
 ## Summary
 
-[target role] professional with retail supervisory and direct support experience, based in Saskatchewan and seeking a Canadian employer that can support PR (SINP) or a work permit. Open to on-site roles in Moose Jaw or Regina, SK.
+[target role] professional with retail supervisory and direct support experience, based in Saskatchewan and seeking a Canadian employer that can support PR (permanent residency). Open to on-site, full-time roles in Moose Jaw or Regina, SK.
 
 ## Skills
 

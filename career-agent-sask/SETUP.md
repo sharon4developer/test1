@@ -1,12 +1,13 @@
 # CareerSaskBot setup on Beelink
 
-This agent is separate from Tony, HomeBot, SplitEasy, RuView, and the IT CareerBot (`career-agent/`, agent id `careerbot`, bound to the existing `@SharonCareerBot`). CareerSaskBot is a second, independent agent for Sharon's Saskatchewan-first retail-management and direct-support/community-services job search — it must not share a workspace, tracker, daily apply cap, resume identity, or Telegram bot with the IT CareerBot.
+This agent is separate from Tony, HomeBot, SplitEasy, RuView, and the IT CareerBot (`career-agent/`, agent id `careerbot`, bound to the existing `@SharonCareerBot`). CareerSaskBot is a second, independent agent for Sharon's Saskatchewan-first job search — it must not share a workspace, tracker, daily apply cap, resume identity, or Telegram bot with the IT CareerBot.
 
 ## What it does
 
-- Finds genuine HR/company-posted jobs in Saskatchewan (priority: Moose Jaw, Regina), Canada fallback, that support PR (SINP) or a work permit
-- Matches Sharon's real experience: retail management/supervisory and direct support/community services roles — not restricted to IT
-- Auto-applies only at 75%+ profile fit (up to 10/day)
+- Finds genuine, full-time, HR/company-posted jobs in Saskatchewan (priority: Moose Jaw, Regina), Canada fallback — any role, not restricted to a fixed title list
+- Requires the employer to support PR (permanent residency) — a hard requirement, ideally via SINP; work-permit-only jobs no longer qualify
+- Checks employer public reviews before applying; skips employers with bad reviews
+- Auto-applies only at 75%+ truthful resume fit (up to 10/day)
 - Writes a new resume and cover letter for each job
 - Reads job/recruiter email
 - Drafts conversation replies
