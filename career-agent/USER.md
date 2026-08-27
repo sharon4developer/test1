@@ -1,6 +1,8 @@
-# USER.md — Sharon career profile
+# USER.md — Sharon career profile (CareerBot IT track)
 
 Fill this once. CareerBot reads it every session.
+
+This is the IT-only track, separate from the Saskatchewan retail/direct-support CareerBotSask (`career-agent-sask/`). Sharon's confirmed work history so far is retail management (7-Eleven) and direct support work, NOT confirmed IT employment. Do not treat anything below as filled-in fact until Sharon actually fills it in — leave it TODO and do not apply until it is real and verifiable.
 
 ## Identity
 
@@ -9,21 +11,19 @@ Fill this once. CareerBot reads it every session.
 - Phone:
 - LinkedIn:
 - GitHub / portfolio:
-- Work authorization: currently in Canada; needs employer-supported work permit (LMIA / visa / employer-specific permit) to stay
+- Work authorization: currently in Canada; needs employer-supported PR (e.g. via a Provincial Nominee Program) or work permit (LMIA / visa / employer-specific permit) to stay
 - Notice period / start date:
 
 ## Location and permit policy
 
 - Currently in Canada
-- Needs a job that supports PR (permanent residency), ideally via the Saskatchewan Immigrant Nominee Program (SINP); a straight work permit/LMIA is an acceptable fallback if PR support is not offered
+- Needs a job that supports PR (permanent residency), ideally via an applicable Provincial Nominee Program (PNP); a straight work permit/LMIA is an acceptable fallback if PR support is not offered
 - Do not print a home-city line on resume or cover letter
-- Do print work authorization: currently in Canada; seeking employer support for PR (SINP) or a Canadian work permit
+- Do print work authorization: currently in Canada; seeking employer support for PR or a Canadian work permit
 - Ready to relocate inside Canada: yes
-- Target province: Saskatchewan
-- Priority cities (search and apply first): Moose Jaw, Regina
-- Other Saskatchewan cities: acceptable, lower priority
+- Target province: none — Canada-wide, no province restriction
 - Remote OK if the employer is Canadian and can support PR/permit: yes
-- Target country for search: Canada, Saskatchewan-first
+- Target country for search: Canada, no province/city restriction
 
 ## Genuine posting policy
 
@@ -34,15 +34,16 @@ Fill this once. CareerBot reads it every session.
 
 ## Target roles
 
-- Primary titles: Assistant Store Manager, Retail Store Manager, Retail Supervisor, Direct Support Professional, Community Support Worker, Disability Support Worker
-- Secondary titles: Shift Supervisor, Customer Service Manager, Support Worker, Care Aide, Residential Support Worker
-- Seniority: entry to supervisory/assistant-manager level
-- Employment type: full-time
+- Primary titles: TODO Sharon: list the IT job titles you actually want (e.g. Help Desk / IT Support, Systems Administrator, Network Technician, Junior Developer, QA Tester, IT Technician) — do not guess, leave blank until Sharon lists real target titles.
+- Secondary titles: TODO Sharon
+- Seniority: TODO Sharon (e.g. entry-level, junior, with X years of experience)
+- Employment type: full-time / contract
 - Salary range (optional):
-- Not restricted to IT — match real experience below (retail management, direct support/community services)
+- Must-have: IT role
 
 ## Skills
 
+- TODO Sharon: list your IT skills, certifications, projects, or relevant coursework/self-study so CareerBot can build a truthful resume — do not apply until this is filled with real, verifiable information.
 - Languages:
 - Frameworks:
 - Cloud / DevOps:
@@ -52,18 +53,19 @@ Fill this once. CareerBot reads it every session.
 
 ## Experience bullets to reuse
 
-- Role 1: 7-Eleven — Assistant Store Manager (Nov 2023–Present). TODO Sharon: confirm exact job title(s) held since Nov 2023 if it changed before becoming Assistant Manager, and the promotion date. Confirm key duties (e.g. staff supervision/scheduling, cash handling/reconciliation, inventory/ordering, customer service, opening/closing, loss prevention, training new staff) so CareerBot can write true bullets, not generic ones.
-- Role 2: TODO Sharon: confirm exact legal employer name (heard as "Citizens Alliance/Association") — Direct Support Professional, approx. 9 months. Confirm start/end dates and whether this was before, during, or overlapping the 7-Eleven role. Confirm key duties (e.g. personal care, medication support, behavioural support, documentation/case notes, community integration, safety protocols).
+- TODO Sharon: list any real IT-related work, internships, help-desk/tech-support duties, freelance/contract IT work, or IT-adjacent responsibilities inside a non-IT job (e.g. "set up store POS systems", "administered store network/Wi-Fi"), with employer names and dates. Do not invent an IT job history — if you have none yet, leave this section empty and tell CareerBot so it does not apply until there is truthful experience to put on a resume.
+- Role 1:
+- Role 2:
 - Role 3:
 
 ## Education / certs
 
--
+- TODO Sharon: list any IT-relevant education, bootcamps, certifications (e.g. CompTIA A+/Network+/Security+, AWS/Azure/GCP certs), or self-study/courses completed or in progress.
 
 ## Dealbreakers
 
 - Companies or industries to skip:
-- Must-have: role matches Target roles above (retail management or direct support/community services), Saskatchewan (priority Moose Jaw, Regina), PR support (SINP) or work-permit/LMIA support, HR or company-direct posting, 75%+ fit
+- Must-have: IT role, Canada (no province restriction), PR support (e.g. via a Provincial Nominee Program) or work-permit/LMIA/sponsorship support, HR or company-direct posting, 75%+ fit
 - Must-not: unpaid, scam, no-sponsorship, PR/citizen-only, aggregator-only, confidential employer
 
 ## Email

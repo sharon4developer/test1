@@ -5,6 +5,8 @@ Do not reuse a previous tailored resume.
 Do not add a home-city line.
 Do include work authorization.
 
+Sharon's confirmed work history so far is retail management (7-Eleven Assistant Store Manager) and direct support work, not IT. Do not carry over those roles here as if they were IT experience, and do not invent IT experience. Leave the sections below as TODO until Sharon provides real, verifiable IT skills/experience.
+
 ## Header
 
 - Name:
@@ -12,32 +14,24 @@ Do include work authorization.
 - Phone:
 - LinkedIn:
 - GitHub:
-- Work authorization: Currently in Canada; seeking employer support for PR (SINP) or a Canadian work permit
+- Work authorization: Currently in Canada; seeking employer support for PR (e.g. via a Provincial Nominee Program) or a Canadian work permit
 
 ## Summary
 
-[target role] professional with retail supervisory and direct support experience, based in Saskatchewan and seeking a Canadian employer that can support PR (SINP) or a work permit. Open to on-site roles in Moose Jaw or Regina, SK.
+TODO Sharon: once you provide real IT skills/experience below, CareerBot will write a one-line summary here (e.g. "[target IT role] seeking a Canadian employer that can support PR or a work permit"). Do not fill this in with placeholder claims.
 
 ## Skills
 
-- TODO Sharon: confirm skills, e.g. staff scheduling/supervision, cash handling/reconciliation, inventory management, customer service, POS systems, personal/direct care support, documentation, conflict de-escalation
+- TODO Sharon: list your IT skills, certifications, projects, or relevant coursework/self-study so CareerBot can build a truthful resume — do not apply until this is filled with real, verifiable information.
 
 ## Experience
 
-### Assistant Store Manager — 7-Eleven
-Nov 2023 – Present
-
-- TODO Sharon: confirm exact duties (staff supervision/scheduling, cash handling, inventory/ordering, opening/closing procedures, customer service, training, loss prevention)
-
-### Direct Support Professional — [TODO Sharon: confirm exact employer legal name]
-[TODO Sharon: confirm dates, approx. 9 months]
-
-- TODO Sharon: confirm exact duties (personal care, medication support, behavioural/community support, documentation, safety protocols)
+- TODO Sharon: list any real IT-related work, internships, help-desk/tech-support duties, freelance/contract IT work, or IT-adjacent responsibilities (with employer names and dates). If you have no IT work history yet, leave this blank and tell CareerBot — do not fabricate an IT job history.
 
 ## Education
 
--
+- TODO Sharon: list any IT-relevant education, bootcamps, certifications, or self-study/courses completed or in progress.
 
 ## Projects
 
--
+- TODO Sharon: list any personal, freelance, or open-source IT projects that demonstrate real skills.

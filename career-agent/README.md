@@ -1,9 +1,10 @@
 # CareerBot
 
-OpenClaw agent workspace for Sharon's job search.
+OpenClaw agent workspace for Sharon's IT job search, bound to the existing `@SharonCareerBot` Telegram bot.
 
-- Search genuine HR/company-posted jobs in Saskatchewan (priority: Moose Jaw, Regina), Canada fallback, that support PR (SINP) or a work permit
-- Matches Sharon's real experience: retail management/supervisory and direct support/community services — not restricted to IT
+This is one of two independent job-search agents. The other is `career-agent-sask/` (CareerBotSask, Saskatchewan-first retail-management and direct-support/community-services job search, a new bot Sharon creates separately). CareerBot has its own workspace, agent id (`careerbot`), Telegram bot, application tracker, daily apply cap, and resume identity — the two tracks do not share state.
+
+- Search genuine HR/company-posted IT jobs in Canada (no province restriction) that support PR or a work permit
 - Auto-apply only at 75%+ profile fit
 - Write a new resume and cover letter for each job
 - Read reply email

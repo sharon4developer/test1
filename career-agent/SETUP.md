@@ -1,27 +1,21 @@
-# CareerBot setup on Beelink
+# CareerBot setup on Beelink — IT-track content refresh
 
-This agent is separate from Tony, HomeBot, SplitEasy, and RuView.
+This is a content refresh, not a new agent. The `careerbot` OpenClaw agent already exists and is already bound to the existing `@SharonCareerBot` Telegram bot from earlier setup work (see git history at commit `d44abff` for the original `openclaw agents add` / `agents bind` invocations). This update replaces the Saskatchewan-pivoted content that was temporarily living in this workspace with IT-track content. **No new bot and no new agent registration are needed here.**
 
-## What it does
+The Saskatchewan-first retail-management/direct-support track that used to live in this folder has moved to a separate new kit, `career-agent-sask/`, for a brand-new "CareerBotSask" bot. See `career-agent-sask/SETUP.md` for that one.
 
-- Finds genuine HR/company-posted jobs in Saskatchewan (priority: Moose Jaw, Regina), Canada fallback, that support PR (SINP) or a work permit
-- Matches Sharon's real experience: retail management/supervisory and direct support/community services roles — not restricted to IT
+## What it does now
+
+- Finds genuine HR/company-posted IT jobs in Canada (no province restriction) that support PR or a work permit
 - Auto-applies only at 75%+ profile fit (up to 10/day)
 - Writes a new resume and cover letter for each job
 - Reads job/recruiter email
 - Drafts conversation replies
 - Does not send recruiter follow-up emails until Sharon confirms
 
-## 1. Create the OpenClaw agent
+## 1. Re-sync the updated files (no agent/bot creation)
 
-```bash
-openclaw agents add career \
-  --workspace ~/.openclaw/workspace-career \
-  --model google/gemini-3.5-flash-lite \
-  --non-interactive
-```
-
-Copy this folder into the workspace:
+`careerbot` and its Telegram binding to `@SharonCareerBot` already exist — do not run `openclaw agents add` or create a new BotFather bot for this track. Just refresh the files on the Beelink host:
 
 ```bash
 cp -a career-agent/. ~/.openclaw/workspace-career/
@@ -30,32 +24,27 @@ mkdir -p ~/.openclaw/workspace-career/cover-letters/out
 mkdir -p ~/.openclaw/workspace-career/resume/out
 ```
 
-```bash
-openclaw agents set-identity --agent career --from-identity --workspace ~/.openclaw/workspace-career
-openclaw config set agents.entries.career.model "google/gemini-3.5-flash-lite"
-```
-
-Fill `USER.md` and `resume/BASE.md` before enabling apply. Empty profile means no applies.
-
-## 2. Dedicated Telegram bot
-
-Do not reuse Tony or HomeBot.
+If you want OpenClaw to re-read `IDENTITY.md` after the refresh:
 
 ```bash
-openclaw config set channels.telegram.accounts.career.botToken "PASTE_TOKEN"
-openclaw config set channels.telegram.accounts.career.dmPolicy "allowlist"
-openclaw config set channels.telegram.accounts.career.allowFrom '["tg:8009605739"]'
-openclaw agents bind --agent career --bind telegram:career
-openclaw gateway restart
+openclaw agents set-identity --agent careerbot --from-identity --workspace ~/.openclaw/workspace-career
 ```
+
+Fill `USER.md` and `resume/BASE.md` with Sharon's real IT background before enabling apply. TODO placeholders mean no applies.
+
+## 2. Telegram bot — nothing to do
+
+`@SharonCareerBot` is already registered and already bound to the `careerbot` agent. Do not create a new bot in BotFather for this track and do not rebind.
 
 ```bash
 openclaw agents list --bindings
 ```
 
+Confirm `careerbot` is still bound to its existing Telegram account; no changes needed here.
+
 ## 3. Skills
 
-OpenClaw 2026.4.1 rejects `@owner/slug`, and bare `job-auto-apply` is ambiguous.
+These skills were already installed for `careerbot` during earlier setup. Only touch this section if a skill is missing or needs reinstalling.
 
 job-hunter:
 
@@ -81,7 +70,7 @@ find . -name SKILL.md
 openclaw skills install ./skills/job-auto-apply
 ```
 
-Copy both skills into the career workspace too:
+Copy both skills into the career workspace too (if not already present):
 
 ```bash
 mkdir -p ~/.openclaw/workspace-career/skills
@@ -118,6 +107,8 @@ Still confirm:
 
 ## 5. Daily automation
 
+The automation likely already exists from earlier setup. If it needs to be (re)created or its message updated to reflect the IT-only, Canada-wide filters:
+
 ```bash
 openclaw automations add \
   --name career-auto-apply \
@@ -127,13 +118,13 @@ openclaw automations add \
   --announce \
   --channel telegram \
   --account careerbot \
-  --message "Follow HEARTBEAT.md. Saskatchewan first (Moose Jaw, Regina), Canada fallback. HR/company-direct posts. PR (SINP) or work-permit/LMIA/sponsorship support required. Fit 75%+. New resume per job. Max 10 today. No recruiter conversation emails."
+  --message "Follow HEARTBEAT.md. Canada-wide IT only, no province restriction. HR/company-direct posts. PR (e.g. via a Provincial Nominee Program) or work-permit/LMIA/sponsorship support required. Fit 75%+. New resume per job. Max 10 today. No recruiter conversation emails."
 ```
 
 ## 6. First Telegram messages
 
 ```text
-Read SOUL.md USER.md AGENTS.md career-guard. Confirm: Canada only, HR/company-direct, work-permit support, 75%+ fit, new resume per job, wait before recruiter conversation emails.
+Read SOUL.md USER.md AGENTS.md career-guard. Confirm: Canada-wide IT only, HR/company-direct, PR-or-work-permit support, 75%+ fit, new resume per job, wait before recruiter conversation emails, separate from the Saskatchewan CareerBotSask workspace.
 ```
 
 ```text
@@ -141,7 +132,7 @@ Ask me the missing USER.md fields. Do not apply until the profile and base resum
 ```
 
 ```text
-Search genuine HR-posted jobs in Saskatchewan (Moose Jaw, Regina first), Canada fallback, that support PR (SINP) or a work permit. Auto-apply only at 75%+ fit. Write a new resume for each. Report found, scored, applied, skipped.
+Search genuine HR-posted Canadian IT jobs (no province restriction) that support PR or a work permit. Auto-apply only at 75%+ fit. Write a new resume for each. Report found, scored, applied, skipped.
 ```
 
 ## 7. Isolation checks
@@ -150,3 +141,5 @@ Search genuine HR-posted jobs in Saskatchewan (Moose Jaw, Regina first), Canada 
 openclaw agents list --bindings
 ls ~/.openclaw/workspace-career
 ```
+
+Confirm `careerbot` and `careerbotsask` are two separate agents with two separate workspaces and two separate Telegram bindings.

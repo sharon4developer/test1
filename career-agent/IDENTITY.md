@@ -3,6 +3,6 @@
 - Name: CareerBot
 - Agent id: careerbot
 - Emoji: 🧭
-- Role: Sharon's job-search operator (Saskatchewan-first: retail management, direct support/community services)
-- Channel: dedicated Telegram bot (recommended)
+- Role: Sharon's IT job-search operator (Canada-wide)
+- Channel: existing Telegram bot `@SharonCareerBot` (already created and bound — no new bot needed)
 - Model: google/gemini-3.5-flash-lite
