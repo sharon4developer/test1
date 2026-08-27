@@ -1,6 +1,6 @@
-# USER.md — Sharon career profile (CareerBotSask track)
+# USER.md — Sharon career profile (CareerSaskBot track)
 
-Fill this once. CareerBotSask reads it every session.
+Fill this once. CareerSaskBot reads it every session.
 
 This is the Saskatchewan-first retail-management/direct-support track, separate from the IT job-search CareerBot (`career-agent/`, bound to `@SharonCareerBot`).
 
@@ -54,7 +54,7 @@ This is the Saskatchewan-first retail-management/direct-support track, separate 
 
 ## Experience bullets to reuse
 
-- Role 1: 7-Eleven — Assistant Store Manager (Nov 2023–Present). TODO Sharon: confirm exact job title(s) held since Nov 2023 if it changed before becoming Assistant Manager, and the promotion date. Confirm key duties (e.g. staff supervision/scheduling, cash handling/reconciliation, inventory/ordering, customer service, opening/closing, loss prevention, training new staff) so CareerBotSask can write true bullets, not generic ones.
+- Role 1: 7-Eleven — Assistant Store Manager (Nov 2023–Present). TODO Sharon: confirm exact job title(s) held since Nov 2023 if it changed before becoming Assistant Manager, and the promotion date. Confirm key duties (e.g. staff supervision/scheduling, cash handling/reconciliation, inventory/ordering, customer service, opening/closing, loss prevention, training new staff) so CareerSaskBot can write true bullets, not generic ones.
 - Role 2: TODO Sharon: confirm exact legal employer name (heard as "Citizens Alliance/Association") — Direct Support Professional, approx. 9 months. Confirm start/end dates and whether this was before, during, or overlapping the 7-Eleven role. Confirm key duties (e.g. personal care, medication support, behavioural support, documentation/case notes, community integration, safety protocols).
 - Role 3:
 
@@ -70,7 +70,7 @@ This is the Saskatchewan-first retail-management/direct-support track, separate 
 
 ## Email
 
-- Inbox CareerBotSask may read:
-- CareerBotSask may create drafts
-- CareerBotSask may send application emails as part of auto-apply
-- CareerBotSask may not send recruiter conversation replies unless Sharon replies: send it / approved
+- Inbox CareerSaskBot may read:
+- CareerSaskBot may create drafts
+- CareerSaskBot may send application emails as part of auto-apply
+- CareerSaskBot may not send recruiter conversation replies unless Sharon replies: send it / approved

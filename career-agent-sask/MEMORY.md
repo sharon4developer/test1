@@ -1,6 +1,6 @@
 # MEMORY.md
 
-## CareerBotSask purpose
+## CareerSaskBot purpose
 
 Sharon wants an automated job-search agent that:
 
@@ -18,7 +18,7 @@ Sharon wants an automated job-search agent that:
 
 - OpenClaw agent id: careerbotsask
 - Workspace: ~/.openclaw/workspace-career-sask
-- Telegram account: careerbotsask (new dedicated BotFather bot named "CareerBotSask" — do not reuse the IT CareerBot's `@SharonCareerBot` or its `careerbot` Telegram account)
+- Telegram account: careerbotsask (new dedicated BotFather bot named "CareerSaskBot" — do not reuse the IT CareerBot's `@SharonCareerBot` or its `careerbot` Telegram account)
 - Preferred model: google/gemini-3.5-flash-lite
 - Groq is backup only because free-tier rate limits hit OpenClaw prompts quickly
 

@@ -1,6 +1,6 @@
 # Base resume
 
-CareerBotSask copies this, then writes a NEW tailored file per job under resume/out.
+CareerSaskBot copies this, then writes a NEW tailored file per job under resume/out.
 Do not reuse a previous tailored resume.
 Do not add a home-city line.
 Do include work authorization.

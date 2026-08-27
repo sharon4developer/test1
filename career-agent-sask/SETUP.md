@@ -1,6 +1,6 @@
-# CareerBotSask setup on Beelink
+# CareerSaskBot setup on Beelink
 
-This agent is separate from Tony, HomeBot, SplitEasy, RuView, and the IT CareerBot (`career-agent/`, agent id `careerbot`, bound to the existing `@SharonCareerBot`). CareerBotSask is a second, independent agent for Sharon's Saskatchewan-first retail-management and direct-support/community-services job search — it must not share a workspace, tracker, daily apply cap, resume identity, or Telegram bot with the IT CareerBot.
+This agent is separate from Tony, HomeBot, SplitEasy, RuView, and the IT CareerBot (`career-agent/`, agent id `careerbot`, bound to the existing `@SharonCareerBot`). CareerSaskBot is a second, independent agent for Sharon's Saskatchewan-first retail-management and direct-support/community-services job search — it must not share a workspace, tracker, daily apply cap, resume identity, or Telegram bot with the IT CareerBot.
 
 ## What it does
 
@@ -37,12 +37,11 @@ openclaw config set agents.entries.careerbotsask.model "google/gemini-3.5-flash-
 
 Fill `USER.md` and `resume/BASE.md` before enabling apply. Empty (or TODO) profile means no applies.
 
-## 2. Dedicated Telegram bot (new — do not reuse the IT CareerBot's bot)
+## 2. Dedicated Telegram bot (already created: `@SharonCareerSaskBot`)
 
-Do not reuse Tony, HomeBot, or the IT CareerBot's `@SharonCareerBot` bot. Sharon needs to create a brand-new bot in BotFather for this Saskatchewan track so the two CareerBot agents show up as visually distinct chats in Telegram.
+Sharon has already created the dedicated bot for this track in BotFather: display name "CareerSaskBot", username `@SharonCareerSaskBot`. Do not reuse Tony, HomeBot, or the IT CareerBot's `@SharonCareerBot` bot — this is a separate bot account.
 
-1. In Telegram, message `@BotFather`, run `/newbot`, and create a new bot dedicated to this track (display name "CareerBotSask", any available `@...bot` username). Do not reuse `@SharonCareerBot` or any other existing bot.
-2. Copy the token BotFather gives you.
+Get the token for `@SharonCareerSaskBot` from BotFather (`/mybots` → select it → API Token if you don't already have it saved), then attach it:
 
 ```bash
 openclaw config set channels.telegram.accounts.careerbotsask.botToken "PASTE_TOKEN"

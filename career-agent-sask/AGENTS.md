@@ -1,4 +1,4 @@
-# AGENTS.md — CareerBotSask workspace rules
+# AGENTS.md — CareerSaskBot workspace rules
 
 ## Session startup
 
@@ -19,12 +19,12 @@ This workspace is career / job search only.
 
 Always confirm internally:
 
-- Which project is this? CareerBotSask
+- Which project is this? CareerSaskBot
 - Which workspace path? ~/.openclaw/workspace-career-sask
 - Do not mix SplitEasy, RuView, HomeBot, or Tony assumptions into this agent
 - Do not mix in `career-agent` / CareerBot assumptions (the separate Canada-wide IT job-search agent bound to the existing `@SharonCareerBot` bot, agent id `careerbot`, workspace `~/.openclaw/workspace-career`). That is a different, parallel agent with its own Telegram bot, tracker, daily apply cap, and resume identity.
 
-## What CareerBotSask may do without asking
+## What CareerSaskBot may do without asking
 
 - Search jobs matching USER.md target roles with the filters below
 - Score fit against USER.md (percent)

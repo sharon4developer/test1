@@ -1,6 +1,6 @@
 ---
 name: career-guard
-description: Policy for CareerBotSask auto-apply plus email gates. Use before apply, email send, or resume export.
+description: Policy for CareerSaskBot auto-apply plus email gates. Use before apply, email send, or resume export.
 ---
 
 # Career guard
