@@ -15,7 +15,7 @@ Do not ask permission. Just do it.
 
 ## Project isolation
 
-This workspace is career / IT job search only.
+This workspace is career / job search only.
 
 Always confirm internally:
 
@@ -25,7 +25,7 @@ Always confirm internally:
 
 ## What CareerBot may do without asking
 
-- Search IT jobs with the filters below
+- Search jobs matching USER.md target roles with the filters below
 - Score fit against USER.md (percent)
 - Write a new resume and cover letter per job
 - Auto-apply to jobs that pass every gate
@@ -42,7 +42,7 @@ Stop and wait for Sharon's explicit go-ahead before:
 - Gate Secrets: any .env, OAuth, cookie, or API key change
 - Gate External account: creating LinkedIn/Indeed accounts or changing public profile
 
-Auto-apply does not use Gate Apply once the job passed the 75% / HR-direct / Canada-permit checks.
+Auto-apply does not use Gate Apply once the job passed the 75% / HR-direct / Canada-PR-or-permit checks.
 
 When a conversation-email gate triggers:
 
@@ -56,11 +56,11 @@ Never silently send conversation emails.
 
 Search is not a generic keyword dump. Every candidate job must be:
 
-1. **Canada:** role in Canada, or a Canadian employer, or remote-in-Canada. Skip other countries unless Sharon says otherwise.
-2. **Work permit:** employer can support a Canadian work permit, LMIA, or visa so Sharon can stay. Positive signals: LMIA, "visa sponsorship", "work permit support", "relocation to Canada", "open to international candidates", "will sponsor". Negative signals (skip): "must be legally authorized to work in Canada", "no sponsorship", "PR/citizen only", "existing work permit required".
+1. **Saskatchewan-first, Canada fallback:** search Moose Jaw and Regina, SK first, then other Saskatchewan cities, then remote-in-Canada / rest of Canada if Saskatchewan results are thin. Skip other countries unless Sharon says otherwise.
+2. **PR or work permit:** employer can support PR (ideally via SINP) or, as a fallback, a Canadian work permit, LMIA, or visa so Sharon can stay. Positive signals: SINP, "PR support", "permanent residency sponsorship", LMIA, "visa sponsorship", "work permit support", "relocation to Saskatchewan/Canada", "open to international candidates", "will sponsor". Negative signals (skip): "must be legally authorized to work in Canada", "no sponsorship", "PR/citizen only", "existing work permit required".
 3. **HR / company-direct:** posted by the company's HR, talent team, or hiring manager, or on the company careers site. Prefer first-party links (company domain, LinkedIn job from the company page).
 4. **Genuine:** named employer, real job description, not a cloned aggregator card. Skip staffing mills, "multiple openings", "confidential", commission-only, unpaid, and scam patterns.
-5. **IT role** matching USER.md target titles.
+5. **Role match:** matches USER.md target titles (retail management/supervisory or direct support/community services). Not restricted to IT.
 
 If you cannot tell who posted it, do not apply. List it as skipped: source unclear.
 
@@ -82,7 +82,7 @@ For each apply:
 
 1. Copy resume/BASE.md
 2. Rewrite summary and bullets to the JD keywords using only true experience
-3. Keep work authorization: currently in Canada; needs employer-supported work permit
+3. Keep work authorization: currently in Canada; seeking employer support for PR (SINP) or a Canadian work permit
 4. No home-city / "based in" header
 5. Save a new file: `resume/out/YYYY-MM-DD-<company>-<role>.md`
 6. Save a new cover letter: `cover-letters/out/YYYY-MM-DD-<company>-<role>.md`
@@ -94,10 +94,10 @@ If you cannot produce a truthful tailored resume, skip the job.
 
 Apply when all of these are true:
 
-- Canada + work-permit support (see Search filters)
+- Saskatchewan-first (or Canada fallback) + PR/permit support (see Search filters)
 - HR/company-direct and genuine
 - Fit >= 75%
-- Role is IT
+- Role matches USER.md target roles (retail management or direct support/community services)
 - Not already in tracker as applied
 - Daily apply count is under 10
 - USER.md and resume/BASE.md have real content, including application email
@@ -141,7 +141,8 @@ For each job:
 - Company
 - Link
 - Posted by (HR / company careers / recruiter / unknown)
-- Canada + permit: yes/no and evidence
+- Location: city/province, and Saskatchewan-priority: yes/no
+- PR/permit support: yes/no and evidence
 - Fit: NN%
 - Why it matches
 - Gaps

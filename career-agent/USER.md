@@ -15,12 +15,15 @@ Fill this once. CareerBot reads it every session.
 ## Location and permit policy
 
 - Currently in Canada
-- Needs a job that supports a permit to stay (LMIA, work permit, visa sponsorship)
+- Needs a job that supports PR (permanent residency), ideally via the Saskatchewan Immigrant Nominee Program (SINP); a straight work permit/LMIA is an acceptable fallback if PR support is not offered
 - Do not print a home-city line on resume or cover letter
-- Do print work authorization: currently in Canada; requires employer-supported Canadian work permit
+- Do print work authorization: currently in Canada; seeking employer support for PR (SINP) or a Canadian work permit
 - Ready to relocate inside Canada: yes
-- Remote OK if the employer is Canadian and can support a permit: yes
-- Target country for search: Canada only
+- Target province: Saskatchewan
+- Priority cities (search and apply first): Moose Jaw, Regina
+- Other Saskatchewan cities: acceptable, lower priority
+- Remote OK if the employer is Canadian and can support PR/permit: yes
+- Target country for search: Canada, Saskatchewan-first
 
 ## Genuine posting policy
 
@@ -31,11 +34,12 @@ Fill this once. CareerBot reads it every session.
 
 ## Target roles
 
-- Primary titles:
-- Secondary titles:
-- Seniority:
-- Employment type: full-time / contract
+- Primary titles: Assistant Store Manager, Retail Store Manager, Retail Supervisor, Direct Support Professional, Community Support Worker, Disability Support Worker
+- Secondary titles: Shift Supervisor, Customer Service Manager, Support Worker, Care Aide, Residential Support Worker
+- Seniority: entry to supervisory/assistant-manager level
+- Employment type: full-time
 - Salary range (optional):
+- Not restricted to IT — match real experience below (retail management, direct support/community services)
 
 ## Skills
 
@@ -48,8 +52,8 @@ Fill this once. CareerBot reads it every session.
 
 ## Experience bullets to reuse
 
-- Role 1:
-- Role 2:
+- Role 1: 7-Eleven — Assistant Store Manager (Nov 2023–Present). TODO Sharon: confirm exact job title(s) held since Nov 2023 if it changed before becoming Assistant Manager, and the promotion date. Confirm key duties (e.g. staff supervision/scheduling, cash handling/reconciliation, inventory/ordering, customer service, opening/closing, loss prevention, training new staff) so CareerBot can write true bullets, not generic ones.
+- Role 2: TODO Sharon: confirm exact legal employer name (heard as "Citizens Alliance/Association") — Direct Support Professional, approx. 9 months. Confirm start/end dates and whether this was before, during, or overlapping the 7-Eleven role. Confirm key duties (e.g. personal care, medication support, behavioural support, documentation/case notes, community integration, safety protocols).
 - Role 3:
 
 ## Education / certs
@@ -59,7 +63,7 @@ Fill this once. CareerBot reads it every session.
 ## Dealbreakers
 
 - Companies or industries to skip:
-- Must-have: IT role, Canada, work-permit/LMIA/sponsorship support, HR or company-direct posting, 75%+ fit
+- Must-have: role matches Target roles above (retail management or direct support/community services), Saskatchewan (priority Moose Jaw, Regina), PR support (SINP) or work-permit/LMIA support, HR or company-direct posting, 75%+ fit
 - Must-not: unpaid, scam, no-sponsorship, PR/citizen-only, aggregator-only, confidential employer
 
 ## Email

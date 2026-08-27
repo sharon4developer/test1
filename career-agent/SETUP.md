@@ -4,7 +4,8 @@ This agent is separate from Tony, HomeBot, SplitEasy, and RuView.
 
 ## What it does
 
-- Finds genuine HR/company-posted IT jobs in Canada that support a work permit
+- Finds genuine HR/company-posted jobs in Saskatchewan (priority: Moose Jaw, Regina), Canada fallback, that support PR (SINP) or a work permit
+- Matches Sharon's real experience: retail management/supervisory and direct support/community services roles — not restricted to IT
 - Auto-applies only at 75%+ profile fit (up to 10/day)
 - Writes a new resume and cover letter for each job
 - Reads job/recruiter email
@@ -126,7 +127,7 @@ openclaw automations add \
   --announce \
   --channel telegram \
   --account careerbot \
-  --message "Follow HEARTBEAT.md. Canada IT only. HR/company-direct posts. Work-permit/LMIA/sponsorship support required. Fit 75%+. New resume per job. Max 10 today. No recruiter conversation emails."
+  --message "Follow HEARTBEAT.md. Saskatchewan first (Moose Jaw, Regina), Canada fallback. HR/company-direct posts. PR (SINP) or work-permit/LMIA/sponsorship support required. Fit 75%+. New resume per job. Max 10 today. No recruiter conversation emails."
 ```
 
 ## 6. First Telegram messages
@@ -140,7 +141,7 @@ Ask me the missing USER.md fields. Do not apply until the profile and base resum
 ```
 
 ```text
-Search genuine HR-posted Canadian IT jobs that support a work permit. Auto-apply only at 75%+ fit. Write a new resume for each. Report found, scored, applied, skipped.
+Search genuine HR-posted jobs in Saskatchewan (Moose Jaw, Regina first), Canada fallback, that support PR (SINP) or a work permit. Auto-apply only at 75%+ fit. Write a new resume for each. Report found, scored, applied, skipped.
 ```
 
 ## 7. Isolation checks

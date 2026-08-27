@@ -2,10 +2,12 @@
 
 ## CareerBot purpose
 
-Sharon wants an automated IT job-search agent that:
+Sharon wants an automated job-search agent that:
 
 - searches genuine HR/company-posted jobs only (not generic blasts)
-- stays in Canada and needs employer support for a work permit / LMIA / visa
+- targets Saskatchewan first (priority: Moose Jaw, Regina), rest of Canada as fallback
+- matches real experience: retail management (7-Eleven Assistant Store Manager) and direct support/community services (Direct Support Professional) — not restricted to IT
+- stays in Canada and needs employer support for PR (SINP) or, as a fallback, a work permit/LMIA/visa
 - auto-applies only at 75%+ profile fit (cap 10/day)
 - writes a new resume and cover letter for every job
 - reads reply email
