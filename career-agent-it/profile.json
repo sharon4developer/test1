@@ -1,0 +1,49 @@
+{
+  "candidate": {
+    "name": "Sharon",
+    "omit_home_city": true,
+    "currently_in_canada": true,
+    "needs_pr_or_permit_support": true,
+    "pr_program_preferred": "any applicable Provincial Nominee Program (PNP)",
+    "work_authorization_line": "Currently in Canada; seeking employer support for PR (e.g. via a Provincial Nominee Program) or a Canadian work permit.",
+    "ready_to_relocate_inside_canada": true,
+    "target_roles": [],
+    "seniority": "",
+    "skills": [],
+    "dealbreakers": [
+      "non-IT",
+      "unpaid",
+      "scam",
+      "no-sponsorship",
+      "PR-or-citizen-only",
+      "staffing-mill",
+      "aggregator-only",
+      "confidential-employer"
+    ]
+  },
+  "search": {
+    "countries": ["Canada"],
+    "include_remote_canada": true,
+    "require_pr_or_permit_or_lmia_or_sponsorship": true,
+    "skip_if_must_already_be_authorized": true,
+    "hr_or_company_direct_only": true,
+    "prefer_sources": ["company_careers", "linkedin_company_hr"],
+    "sources": ["linkedin", "indeed", "company_careers", "wellfound"],
+    "min_fit_percent": 75
+  },
+  "automation": {
+    "search": true,
+    "draft_resume": true,
+    "new_resume_per_job": true,
+    "draft_cover_letter": true,
+    "new_cover_letter_per_job": true,
+    "read_email": true,
+    "create_email_drafts": true,
+    "send_application_email": true,
+    "send_conversation_email": false,
+    "auto_apply": true,
+    "require_confirmation_for": ["conversation_email"],
+    "max_daily_applications": 10,
+    "min_fit_percent": 75
+  }
+}

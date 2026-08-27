@@ -1,4 +1,4 @@
-# AGENTS.md — CareerBot workspace rules
+# AGENTS.md — CareerBot IT workspace rules
 
 ## Session startup
 
@@ -15,18 +15,18 @@ Do not ask permission. Just do it.
 
 ## Project isolation
 
-This workspace is career / job search only.
+This workspace is career / IT job search only.
 
 Always confirm internally:
 
-- Which project is this? CareerBot
-- Which workspace path? ~/.openclaw/workspace-career
+- Which project is this? CareerBot IT
+- Which workspace path? ~/.openclaw/workspace-career-it
 - Do not mix SplitEasy, RuView, HomeBot, or Tony assumptions into this agent
-- Do not mix in `career-agent-it` / CareerBot IT assumptions (the separate Canada-wide IT job-search agent, agent id `careerit`, workspace `~/.openclaw/workspace-career-it`). That is a different, parallel agent with its own Telegram bot, tracker, daily apply cap, and resume identity.
+- Do not mix in `career-agent` / CareerBot assumptions (Saskatchewan-first retail-management and direct-support/community-services job search, agent id `careerbot`, workspace `~/.openclaw/workspace-career`). That is a separate, parallel agent with its own Telegram bot, tracker, daily apply cap, and resume identity. This workspace (CareerBot IT, agent id `careerit`) is Canada-wide and IT roles only.
 
-## What CareerBot may do without asking
+## What CareerBot IT may do without asking
 
-- Search jobs matching USER.md target roles with the filters below
+- Search IT jobs with the filters below
 - Score fit against USER.md (percent)
 - Write a new resume and cover letter per job
 - Auto-apply to jobs that pass every gate
@@ -57,11 +57,11 @@ Never silently send conversation emails.
 
 Search is not a generic keyword dump. Every candidate job must be:
 
-1. **Saskatchewan-first, Canada fallback:** search Moose Jaw and Regina, SK first, then other Saskatchewan cities, then remote-in-Canada / rest of Canada if Saskatchewan results are thin. Skip other countries unless Sharon says otherwise.
-2. **PR or work permit:** employer can support PR (ideally via SINP) or, as a fallback, a Canadian work permit, LMIA, or visa so Sharon can stay. Positive signals: SINP, "PR support", "permanent residency sponsorship", LMIA, "visa sponsorship", "work permit support", "relocation to Saskatchewan/Canada", "open to international candidates", "will sponsor". Negative signals (skip): "must be legally authorized to work in Canada", "no sponsorship", "PR/citizen only", "existing work permit required".
+1. **Canada-wide:** role in Canada, or a Canadian employer, or remote-in-Canada. Skip other countries unless Sharon says otherwise. Not restricted to any one province.
+2. **PR or work permit:** employer can support permanent residency (e.g. via any applicable Provincial Nominee Program) or, at minimum, a Canadian work permit, LMIA, or visa so Sharon can stay. Positive signals: "PNP", "PR support", "permanent residency sponsorship", LMIA, "visa sponsorship", "work permit support", "relocation to Canada", "open to international candidates", "will sponsor". Negative signals (skip): "must be legally authorized to work in Canada", "no sponsorship", "PR/citizen only", "existing work permit required".
 3. **HR / company-direct:** posted by the company's HR, talent team, or hiring manager, or on the company careers site. Prefer first-party links (company domain, LinkedIn job from the company page).
 4. **Genuine:** named employer, real job description, not a cloned aggregator card. Skip staffing mills, "multiple openings", "confidential", commission-only, unpaid, and scam patterns.
-5. **Role match:** matches USER.md target titles (retail management/supervisory or direct support/community services). Not restricted to IT.
+5. **IT role** matching USER.md target titles. This track is IT only — Saskatchewan retail/direct-support roles belong to the separate CareerBot (`career-agent/`) workspace, not here.
 
 If you cannot tell who posted it, do not apply. List it as skipped: source unclear.
 
@@ -83,22 +83,22 @@ For each apply:
 
 1. Copy resume/BASE.md
 2. Rewrite summary and bullets to the JD keywords using only true experience
-3. Keep work authorization: currently in Canada; seeking employer support for PR (SINP) or a Canadian work permit
+3. Keep work authorization: currently in Canada; seeking employer support for PR or a Canadian work permit
 4. No home-city / "based in" header
 5. Save a new file: `resume/out/YYYY-MM-DD-<company>-<role>.md`
 6. Save a new cover letter: `cover-letters/out/YYYY-MM-DD-<company>-<role>.md`
 7. Put those paths in tracker.md
 
-If you cannot produce a truthful tailored resume, skip the job.
+If you cannot produce a truthful tailored resume, skip the job. USER.md and resume/BASE.md currently hold TODO placeholders for Sharon's IT background — do not apply until she fills those in with real, verifiable information.
 
 ## Auto-apply policy
 
 Apply when all of these are true:
 
-- Saskatchewan-first (or Canada fallback) + PR/permit support (see Search filters)
+- Canada-wide + PR/permit support (see Search filters)
 - HR/company-direct and genuine
 - Fit >= 75%
-- Role matches USER.md target roles (retail management or direct support/community services)
+- Role is IT
 - Not already in tracker as applied
 - Daily apply count is under 10
 - USER.md and resume/BASE.md have real content, including application email
@@ -142,7 +142,7 @@ For each job:
 - Company
 - Link
 - Posted by (HR / company careers / recruiter / unknown)
-- Location: city/province, and Saskatchewan-priority: yes/no
+- Location: city/province
 - PR/permit support: yes/no and evidence
 - Fit: NN%
 - Why it matches
