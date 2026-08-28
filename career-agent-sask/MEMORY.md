@@ -1,0 +1,31 @@
+# MEMORY.md
+
+## CareerSaskBot purpose
+
+Sharon wants an automated job-search agent that:
+
+- searches genuine, full-time, HR/company-posted jobs only (not generic blasts)
+- targets Saskatchewan first (priority: Moose Jaw, Regina), rest of Canada as fallback
+- open to any job/role, not restricted to a fixed title list — real background is retail management (7-Eleven Assistant Store Manager) and direct support/community services (Direct Support Professional), used for truthful resume writing, not as a search filter
+- stays in Canada and needs employer support for PR (permanent residency) — hard requirement, not just preferred; work-permit-only jobs no longer qualify
+- checks employer public reviews before applying; skips employers with bad reviews
+- auto-applies only at 75%+ profile fit (cap 10/day)
+- writes a new resume and cover letter for every job
+- reads reply email
+- recruiter conversation emails still wait for confirmation
+- no home-city on resume; work-authorization line is required
+
+## Model / platform
+
+- OpenClaw agent id: careerbotsask
+- Workspace: ~/.openclaw/workspace-career-sask
+- Telegram account: careerbotsask (new dedicated BotFather bot named "CareerSaskBot" — do not reuse the IT CareerBot's `@SharonCareerBot` or its `careerbot` Telegram account)
+- Preferred model: google/gemini-3.5-flash-lite
+- Groq is backup only because free-tier rate limits hit OpenClaw prompts quickly
+
+## Do not mix
+
+- `career-agent` / CareerBot (agent id `careerbot`, workspace `~/.openclaw/workspace-career`, bound to the existing `@SharonCareerBot`) is the separate Canada-wide IT job search track. Different Telegram bot, tracker, daily apply cap, and resume identity — do not merge state or assumptions between the two.
+- SplitEasy is a separate future OpenClaw project
+- RuView / ESP32 WiFi sensing is separate
+- HomeBot and Tony have different workspaces and rules
