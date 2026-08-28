@@ -10,6 +10,7 @@ Run this checklist before every apply.
 ## Must pass
 
 - USER.md and resume/BASE.md have real experience/skills and an application email
+- Job is not IT/software/tech (that's the separate CareerBot agent's job)
 - Job is full-time (not part-time/casual/contract/gig)
 - Job is in Saskatchewan (priority: Moose Jaw, Regina) or, as fallback, in Canada / for a Canadian employer / remote-in-Canada
 - Employer supports PR (permanent residency) — hard requirement. Ideally SINP, but any employer-backed PR pathway counts. A work-permit/LMIA-only posting with no PR pathway does NOT pass this check.
@@ -24,6 +25,7 @@ Run this checklist before every apply.
 
 ## Skip immediately
 
+- IT/software/tech roles — route mentally to "CareerBot handles this", not this agent
 - "Must be authorized to work in Canada" / "no sponsorship" / PR or citizen only
 - Work permit/LMIA offered but no PR pathway mentioned anywhere in the posting
 - Part-time, casual, contract, gig, or seasonal

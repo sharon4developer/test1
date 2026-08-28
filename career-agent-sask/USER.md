@@ -39,6 +39,7 @@ This is the Saskatchewan-first retail-management/direct-support track, separate 
 ## Target roles
 
 - Open to **any job/role** in Saskatchewan (priority Moose Jaw, Regina) — not restricted to retail management or direct support titles. Cast a wide net.
+- **Except IT roles.** Sharon has a separate dedicated agent (CareerBot, `@SharonCareerBot`) for IT job search. Skip IT/software/tech postings here entirely — do not apply, do not count them toward the daily cap, do not list them in the digest except a one-line "N IT postings skipped (handled by CareerBot)" note if relevant.
 - Must still be a truthful fit: CareerSaskBot can only apply where it can write a resume using Sharon's real experience below without fabricating skills or history — see Experience bullets.
 - Seniority: entry to supervisory/assistant-manager level
 - Employment type: **full-time only** — skip part-time, casual, contract, and gig postings
@@ -67,7 +68,7 @@ This is the Saskatchewan-first retail-management/direct-support track, separate 
 
 - Companies or industries to skip:
 - Must-have: full-time, Saskatchewan (priority Moose Jaw, Regina), PR support (hard requirement — any PR pathway, ideally SINP), HR or company-direct posting, genuine employer with good/acceptable public reviews, 75%+ truthful fit
-- Must-not: unpaid, scam, no PR pathway at all (work-permit-only does not qualify), PR/citizen-only, aggregator-only, confidential employer, part-time/casual/contract, employer with bad reviews
+- Must-not: IT/software/tech roles (handled by the separate CareerBot agent), unpaid, scam, no PR pathway at all (work-permit-only does not qualify), PR/citizen-only, aggregator-only, confidential employer, part-time/casual/contract, employer with bad reviews
 
 ## Email
 

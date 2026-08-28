@@ -4,8 +4,9 @@ On each heartbeat:
 
 1. Read USER.md, resume/BASE.md, and applications/tracker.md
 2. If profile/resume facts or application email are still empty, do not apply. Tell Sharon what is missing.
-3. Search for genuine, full-time, HR/company-posted jobs — any role — Saskatchewan-first (Moose Jaw, Regina priority), Canada fallback, where the employer supports PR (permanent residency, ideally SINP)
-4. Skip aggregator spam, staffing blasts, "no sponsorship", PR/citizen-only, work-permit-only-with-no-PR-pathway, part-time/casual/contract, unclear sources, and employers with bad public reviews (flag "reviews not found" cases to Sharon instead of skipping)
+3. Search for genuine, full-time, HR/company-posted jobs — any role except IT — Saskatchewan-first (Moose Jaw, Regina priority), Canada fallback, where the employer supports PR (permanent residency, ideally SINP)
+3a. Sweep every source in AGENTS.md "Source sweep" (SaskJobs.ca, Job Bank, DiscoverMooseJaw.com, Eluta.ca, SHA/HealthCareerSK, Saskatchewan government careers, Indeed/LinkedIn city-filtered, Kijiji Jobs) — page through results, don't stop at page 1 or the first source that returns hits
+4. Skip IT roles, aggregator spam, staffing blasts, "no sponsorship", PR/citizen-only, work-permit-only-with-no-PR-pathway, part-time/casual/contract, unclear sources, and employers with bad public reviews (flag "reviews not found" cases to Sharon instead of skipping)
 5. Score each job for a truthful resume fit. Skip below 75%
 6. For each apply: write a new resume and cover letter under resume/out and cover-letters/out
 7. Auto-apply up to 10 today
@@ -16,7 +17,8 @@ On each heartbeat:
 
 Digest format:
 
-- Searched: Saskatchewan-first (Moose Jaw, Regina), Canada fallback, any role, full-time, HR/company-direct, PR support required, reviews checked
+- Searched: Saskatchewan-first (Moose Jaw, Regina), Canada fallback, any role except IT, full-time, HR/company-direct, PR support required, reviews checked
+- Sources swept this cycle: list which of SaskJobs.ca / Job Bank / DiscoverMooseJaw / Eluta / SHA / SK gov / Indeed / LinkedIn / Kijiji were actually checked
 - New jobs scored: N
 - Applied (>=75%): N
 - Skipped: N (top reasons)
