@@ -57,6 +57,7 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
     setMirrorMode,
     moveCursor,
     triggerRemoteCommand,
+    openActiveMediaOnPhoneForAirPlay,
   } = useCastSession();
 
   const formatTime = (sec: number) => {
@@ -129,6 +130,15 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
             : activeMedia.title}
         </Text>
         <Text style={styles.mediaSubtitle}>{activeMedia.subtitle}</Text>
+
+        <TouchableOpacity
+          style={styles.airplayLaunchBtn}
+          onPress={openActiveMediaOnPhoneForAirPlay}
+        >
+          <Text style={styles.airplayLaunchBtnText}>
+            ▶ Open Native iPhone Player / AirPlay to Car Audio & Screen
+          </Text>
+        </TouchableOpacity>
 
         {/* Scrubber Bar */}
         <View style={styles.scrubberSection}>
@@ -439,7 +449,22 @@ const styles = StyleSheet.create({
   mediaSubtitle: {
     color: BRAND.colors.textSecondary,
     fontSize: 12,
+    marginBottom: 10,
+  },
+  airplayLaunchBtn: {
+    backgroundColor: '#1E3A8A',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: 'center',
     marginBottom: 14,
+  },
+  airplayLaunchBtnText: {
+    color: '#E0F2FE',
+    fontSize: 12,
+    fontWeight: '700',
   },
   scrubberSection: {
     marginBottom: 16,

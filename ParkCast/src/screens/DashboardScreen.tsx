@@ -35,6 +35,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
     connectionTarget,
     carName,
     relayConnected,
+    relayHost,
     isParkedConfirmed,
     activeMedia,
     mirrorMode,
@@ -45,13 +46,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
     setParkedConfirmed,
     selectMedia,
     playCustomUrl,
+    playYouTubeUrlOrQuery,
     castLocalPhotoOrVideo,
     setMirrorMode,
     recordLocalVideoCastFromSession,
   } = useCastSessionWithSub();
 
   const [pinInput, setPinInput] = useState(roomCode);
+  const [relayHostInput, setRelayHostInput] = useState(relayHost);
   const [showPinEditor, setShowPinEditor] = useState(false);
+  const [ytInput, setYtInput] = useState('');
+  const [showYtModal, setShowYtModal] = useState(false);
   const [customTitle, setCustomTitle] = useState('');
   const [customUrl, setCustomUrl] = useState('');
   const [showIptvForm, setShowIptvForm] = useState(false);
@@ -219,29 +224,44 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
         </View>
 
         {showPinEditor && (
-          <View style={styles.pinEditorRow}>
-            <TextInput
-              style={styles.pinInput}
-              value={pinInput}
-              onChangeText={setPinInput}
-              placeholder="4-digit Car PIN"
-              placeholderTextColor={BRAND.colors.textMuted}
-              maxLength={6}
-            />
-            <TouchableOpacity
-              style={styles.pinApplyBtn}
-              onPress={() => {
-                connectToCarReceiver(pinInput);
-                setShowPinEditor(false);
-              }}
-            >
-              <Text style={styles.pinApplyText}>Pair Car Screen</Text>
-            </TouchableOpacity>
-            {connectionTarget !== 'disconnected' && (
-              <TouchableOpacity style={styles.pinDisconnectBtn} onPress={disconnectCast}>
-                <Text style={styles.pinDisconnectText}>Disconnect</Text>
+          <View style={styles.pinEditorBox}>
+            <Text style={styles.pinHelpLabel}>
+              Car Relay IP:Port (from `npm run relay` on your laptop) & 4-Digit PIN:
+            </Text>
+            <View style={styles.pinEditorRow}>
+              <TextInput
+                style={[styles.pinInput, { flex: 1.8 }]}
+                value={relayHostInput}
+                onChangeText={setRelayHostInput}
+                placeholder="192.168.1.x:4848"
+                placeholderTextColor={BRAND.colors.textMuted}
+                autoCapitalize="none"
+              />
+              <TextInput
+                style={[styles.pinInput, { flex: 0.8 }]}
+                value={pinInput}
+                onChangeText={setPinInput}
+                placeholder="PIN"
+                placeholderTextColor={BRAND.colors.textMuted}
+                maxLength={6}
+              />
+            </View>
+            <View style={[styles.pinEditorRow, { marginTop: 8 }]}>
+              <TouchableOpacity
+                style={[styles.pinApplyBtn, { flex: 1, alignItems: 'center' }]}
+                onPress={() => {
+                  connectToCarReceiver(pinInput, undefined, relayHostInput);
+                  setShowPinEditor(false);
+                }}
+              >
+                <Text style={styles.pinApplyText}>Connect & Pair Car Screen</Text>
               </TouchableOpacity>
-            )}
+              {connectionTarget !== 'disconnected' && (
+                <TouchableOpacity style={styles.pinDisconnectBtn} onPress={disconnectCast}>
+                  <Text style={styles.pinDisconnectText}>Disconnect</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         )}
 
@@ -315,20 +335,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
         <TouchableOpacity
           testID="card-youtube-web"
           style={styles.sourceCard}
-          onPress={() => {
-            selectMedia(MEDIA_PRESETS[0]);
-            onOpenRemote();
-          }}
+          onPress={() => setShowYtModal(!showYtModal)}
         >
           <View style={[styles.sourceIconWrap, { backgroundColor: '#1E3A8A' }]}>
             <Text style={styles.sourceIconText}>YT</Text>
           </View>
           <Text style={styles.sourceCardTitle}>YouTube & Web</Text>
           <Text style={styles.sourceCardSub}>
-            Stream web videos & queues with car remote controls
+            Paste any YouTube link or stream to car receiver
           </Text>
           <View style={styles.cardBadgeRow}>
-            <Text style={styles.cardBadgeText}>{isPro ? '1080p / 4K' : '480p Free'}</Text>
+            <Text style={styles.cardBadgeText}>{isPro ? '1080p / 4K' : 'Tap to Cast YouTube'}</Text>
           </View>
         </TouchableOpacity>
 
@@ -406,6 +423,44 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
           </View>
         </TouchableOpacity>
       </View>
+
+      {/* Expandable YouTube URL / Video ID Launcher */}
+      {showYtModal && (
+        <View style={styles.iptvFormCard}>
+          <Text style={styles.iptvFormTitle}>Cast Any YouTube Video to Car Screen</Text>
+          <TextInput
+            style={styles.iptvInput}
+            placeholder="Paste YouTube URL (e.g. https://youtu.be/ysz5S6PUM-U)"
+            placeholderTextColor={BRAND.colors.textMuted}
+            value={ytInput}
+            onChangeText={setYtInput}
+            autoCapitalize="none"
+          />
+          <View style={styles.iptvBtnRow}>
+            <TouchableOpacity
+              style={[styles.iptvCastBtn, { marginRight: 8, backgroundColor: '#334155' }]}
+              onPress={() => {
+                selectMedia(MEDIA_PRESETS[0]);
+                setShowYtModal(false);
+                onOpenRemote();
+              }}
+            >
+              <Text style={styles.iptvCastBtnText}>Play 4K Demo Drive</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iptvCastBtn}
+              onPress={() => {
+                playYouTubeUrlOrQuery(ytInput || 'https://youtu.be/ysz5S6PUM-U');
+                setYtInput('');
+                setShowYtModal(false);
+                onOpenRemote();
+              }}
+            >
+              <Text style={styles.iptvCastBtnText}>Cast YouTube to Car</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Expandable Custom Stream / IPTV URL Form */}
       {showIptvForm && (
@@ -657,11 +712,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
+  pinEditorBox: {
+    marginTop: 10,
+    backgroundColor: BRAND.colors.bgSecondary,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BRAND.colors.borderSubtle,
+  },
+  pinHelpLabel: {
+    color: BRAND.colors.textSecondary,
+    fontSize: 11,
+    marginBottom: 6,
+  },
   pinEditorRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 10,
   },
   pinInput: {
     flex: 1,

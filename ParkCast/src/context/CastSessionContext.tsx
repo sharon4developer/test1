@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
+import Constants from 'expo-constants';
 import {
   BRAND,
   MEDIA_PRESETS,
@@ -42,13 +43,16 @@ export interface CastStatePayload {
 
 export interface CastSessionContextValue extends CastStatePayload {
   relayConnected: boolean;
+  relayHost: string;
+  setRelayHost: (host: string) => void;
   customStreams: CustomStreamItem[];
-  connectToCarReceiver: (code?: string, vehicleName?: string) => void;
+  connectToCarReceiver: (code?: string, vehicleName?: string, customRelayHost?: string) => void;
   connectToAirPlay: () => void;
   disconnectCast: () => void;
   setParkedConfirmed: (parked: boolean) => void;
   selectMedia: (media: MediaPreset) => void;
   playCustomUrl: (title: string, url: string) => void;
+  playYouTubeUrlOrQuery: (input: string) => void;
   castLocalPhotoOrVideo: (uri: string, title: string, isVideo: boolean) => void;
   togglePlayPause: () => void;
   seekBySeconds: (deltaSec: number) => void;
@@ -60,11 +64,32 @@ export interface CastSessionContextValue extends CastStatePayload {
   setMirrorMode: (mode: MirrorMode) => void;
   moveCursor: (dx: number, dy: number) => void;
   triggerRemoteCommand: (label: string) => void;
+  openActiveMediaOnPhoneForAirPlay: () => void;
+}
+
+function detectInitialRelayHost(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.hostname}:${BRAND.defaultRelayPort}`;
+  }
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    (Constants as unknown as { manifest2?: { extra?: { expoClient?: { hostUri?: string } } } })
+      ?.manifest2?.extra?.expoClient?.hostUri ||
+    '';
+  if (hostUri && !hostUri.includes('exp.direct')) {
+    const ipPart = hostUri.split(':')[0];
+    if (ipPart) {
+      return `${ipPart}:${BRAND.defaultRelayPort}`;
+    }
+  }
+  return `127.0.0.1:${BRAND.defaultRelayPort}`;
 }
 
 const CastSessionContext = createContext<CastSessionContextValue | undefined>(undefined);
 
 export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [relayHost, setRelayHostState] = useState<string>(detectInitialRelayHost);
+
   const [state, setState] = useState<CastStatePayload>({
     roomCode: '4829',
     connectionTarget: 'car_receiver',
@@ -99,12 +124,12 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const wsRef = useRef<WebSocket | null>(null);
   const suppressBroadcastRef = useRef<boolean>(false);
 
-  // Connect to local WebSocket relay when available so iPhone (Expo Go) and Car Browser sync across devices
+  // Connect to WebSocket relay whenever relayHost or roomCode changes
   useEffect(() => {
-    let wsUrl = `ws://127.0.0.1:${BRAND.defaultRelayPort}`;
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
-      wsUrl = `ws://${window.location.hostname}:${BRAND.defaultRelayPort}`;
-    }
+    const cleanHost = relayHost.replace(/^ws:\/\//, '').replace(/^http:\/\//, '').trim();
+    const wsUrl = cleanHost.includes(':')
+      ? `ws://${cleanHost}`
+      : `ws://${cleanHost}:${BRAND.defaultRelayPort}`;
 
     let socket: WebSocket | null = null;
     try {
@@ -117,6 +142,13 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
           JSON.stringify({
             type: 'join',
             roomCode: state.roomCode,
+          })
+        );
+        socket?.send(
+          JSON.stringify({
+            type: 'state_update',
+            roomCode: state.roomCode,
+            payload: state,
           })
         );
       };
@@ -152,7 +184,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         socket.close();
       }
     };
-  }, []);
+  }, [relayHost, state.roomCode]);
 
   // Broadcast state updates to paired Car Screen over WebSocket relay
   useEffect(() => {
@@ -187,18 +219,35 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return () => clearInterval(timer);
   }, [state.isPlaying, state.connectionTarget]);
 
-  const connectToCarReceiver = useCallback((code = '4829', vehicleName?: string) => {
-    const cleanCode = code.trim() || '4829';
-    setState((prev) => ({
-      ...prev,
-      roomCode: cleanCode,
-      connectionTarget: 'car_receiver',
-      carName: vehicleName || `CarPlay Display · ${cleanCode}`,
-      isPlaying: true,
-      lastRemoteAction: `Paired with Car Screen (PIN ${cleanCode})`,
-      updatedAt: Date.now(),
-    }));
+  const setRelayHost = useCallback((host: string) => {
+    const trimmed = host.trim();
+    if (!trimmed) return;
+    setRelayHostState(
+      trimmed.includes(':') ? trimmed : `${trimmed}:${BRAND.defaultRelayPort}`
+    );
   }, []);
+
+  const connectToCarReceiver = useCallback(
+    (code = '4829', vehicleName?: string, customRelayHost?: string) => {
+      const cleanCode = code.trim() || '4829';
+      if (customRelayHost && customRelayHost.trim()) {
+        const cleanHost = customRelayHost.trim();
+        setRelayHostState(
+          cleanHost.includes(':') ? cleanHost : `${cleanHost}:${BRAND.defaultRelayPort}`
+        );
+      }
+      setState((prev) => ({
+        ...prev,
+        roomCode: cleanCode,
+        connectionTarget: 'car_receiver',
+        carName: vehicleName || `CarPlay Display · ${cleanCode}`,
+        isPlaying: true,
+        lastRemoteAction: `Paired with Car Screen (PIN ${cleanCode})`,
+        updatedAt: Date.now(),
+      }));
+    },
+    []
+  );
 
   const connectToAirPlay = useCallback(() => {
     setState((prev) => ({
@@ -242,6 +291,35 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       currentTimeSec: 0,
       durationSec: media.isLive ? 3600 : 880,
       lastRemoteAction: `Casting "${media.title}"`,
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  const playYouTubeUrlOrQuery = useCallback((input: string) => {
+    const raw = input.trim();
+    if (!raw) return;
+    const ytMatch = raw.match(
+      /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/
+    );
+    const ytId = ytMatch ? ytMatch[1] : /^[A-Za-z0-9_-]{11}$/.test(raw) ? raw : 'ysz5S6PUM-U';
+    const ytPreset: MediaPreset = {
+      id: `yt-${Date.now()}`,
+      title: ytMatch ? `YouTube Video (${ytId})` : `YouTube: ${raw}`,
+      subtitle: `YouTube Car Stream · ID ${ytId}`,
+      category: 'youtube',
+      durationLabel: 'YOUTUBE',
+      thumbnailColor: '#DC2626',
+      streamUrl: `https://www.youtube.com/watch?v=${ytId}`,
+      youtubeId: ytId,
+    };
+    setState((prev) => ({
+      ...prev,
+      activeMedia: ytPreset,
+      mirrorMode: 'off',
+      selectedPhotoUri: null,
+      isPlaying: true,
+      currentTimeSec: 0,
+      lastRemoteAction: `Beaming YouTube (${ytId}) to Car Display`,
       updatedAt: Date.now(),
     }));
   }, []);
@@ -416,11 +494,22 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }));
   }, []);
 
+  const openActiveMediaOnPhoneForAirPlay = useCallback(() => {
+    const targetUrl = state.activeMedia.youtubeId
+      ? `https://www.youtube.com/watch?v=${state.activeMedia.youtubeId}`
+      : state.activeMedia.streamUrl;
+    if (targetUrl) {
+      Linking.openURL(targetUrl).catch(() => {});
+    }
+  }, [state.activeMedia]);
+
   return (
     <CastSessionContext.Provider
       value={{
         ...state,
         relayConnected,
+        relayHost,
+        setRelayHost,
         customStreams,
         connectToCarReceiver,
         connectToAirPlay,
@@ -428,6 +517,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setParkedConfirmed,
         selectMedia,
         playCustomUrl,
+        playYouTubeUrlOrQuery,
         castLocalPhotoOrVideo,
         togglePlayPause,
         seekBySeconds,
@@ -439,6 +529,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setMirrorMode,
         moveCursor,
         triggerRemoteCommand,
+        openActiveMediaOnPhoneForAirPlay,
       }}
     >
       {children}
