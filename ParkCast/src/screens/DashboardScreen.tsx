@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Switch,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { BRAND, MEDIA_PRESETS, MediaPreset } from '../config/brand';
@@ -20,56 +20,45 @@ interface DashboardScreenProps {
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }) => {
   const {
     isPro,
-    planId,
     isTrialActive,
     remainingSessionSeconds,
-    dailyLocalVideosUsed,
-    maxDailyLocalVideos,
     openPaywall,
     downgradeToFreeForTesting,
     fastForwardFreeTimerForTesting,
+    recordLocalVideoCast,
   } = useSubscription();
 
   const {
     roomCode,
     connectionTarget,
-    carName,
     relayConnected,
     relayHost,
-    isParkedConfirmed,
     activeMedia,
     mirrorMode,
-    customStreams,
+    isPlaying,
     connectToCarReceiver,
-    connectToAirPlay,
-    disconnectCast,
-    setParkedConfirmed,
     selectMedia,
-    playCustomUrl,
     playYouTubeUrlOrQuery,
     castLocalPhotoOrVideo,
     setMirrorMode,
-    recordLocalVideoCastFromSession,
-  } = useCastSessionWithSub();
+    togglePlayPause,
+  } = useCastSession();
 
   const [pinInput, setPinInput] = useState(roomCode);
   const [relayHostInput, setRelayHostInput] = useState(relayHost);
-  const [showPinEditor, setShowPinEditor] = useState(false);
+  const [showConnectionSettings, setShowConnectionSettings] = useState(false);
   const [ytInput, setYtInput] = useState('');
-  const [showYtModal, setShowYtModal] = useState(false);
-  const [customTitle, setCustomTitle] = useState('');
-  const [customUrl, setCustomUrl] = useState('');
-  const [showIptvForm, setShowIptvForm] = useState(false);
+  const [showYtBox, setShowYtBox] = useState(false);
+  const [uploadingLabel, setUploadingLabel] = useState<string | null>(null);
 
-  const formatTimer = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  const formatMinutesLeft = (sec: number) => {
+    const m = Math.ceil(sec / 60);
+    return `${m} min left`;
   };
 
   const handleSelectPreset = (preset: MediaPreset) => {
     if (preset.requiresPro && !isPro) {
-      openPaywall(`"${preset.title}" is a Pro 1080p60 Live Channel. Upgrade to ParkCast Pro to unlock all live M3U8 feeds.`);
+      openPaywall('Upgrade to ParkCast Pro to watch all Full HD channels without time limits.');
       return;
     }
     selectMedia(preset);
@@ -78,9 +67,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
 
   const handleStartScreenMirror = () => {
     if (!isPro) {
-      openPaywall(
-        'Real-Time Full iPhone Screen Mirroring is a ParkCast Pro feature. Upgrade to mirror any non-DRM app onto your car display.'
-      );
+      openPaywall('Upgrade to ParkCast Pro to mirror your iPhone screen onto your car display.');
       return;
     }
     setMirrorMode('screen_broadcast');
@@ -88,488 +75,370 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
   };
 
   const handlePickCameraRoll = async (asVideo: boolean) => {
-    if (asVideo && !recordLocalVideoCastFromSession()) {
+    if (asVideo && !recordLocalVideoCast()) {
       return;
     }
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: asVideo ? ['videos'] : ['images'],
-        quality: 0.7,
+        quality: 0.75,
         base64: !asVideo,
         videoExportPreset: ImagePicker.VideoExportPreset.MediumQuality,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
+        setUploadingLabel(
+          asVideo ? 'Sending video to car screen...' : 'Sending photo to car screen...'
+        );
         await castLocalPhotoOrVideo(
           asset.uri,
-          asset.fileName || (asVideo ? 'Camera Roll Video.mp4' : 'iPhone Photo'),
+          asset.fileName || (asVideo ? 'Phone Video.mp4' : 'Phone Photo.jpg'),
           asVideo,
           asset.base64 || undefined
         );
+        setUploadingLabel(null);
         onOpenRemote();
         return;
       }
     } catch {
-      // Fallback to built-in sample camera roll media when running in headless browser or without photo permission
+      setUploadingLabel(null);
     }
 
+    // Friendly fallback if running in browser preview without camera roll
     if (asVideo) {
-      castLocalPhotoOrVideo(
+      await castLocalPhotoOrVideo(
         'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-        'Roadtrip_Dashcam_Clip_HD.mp4',
+        'Sample Phone Video.mp4',
         true
       );
     } else {
-      castLocalPhotoOrVideo(
+      await castLocalPhotoOrVideo(
         'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
-        'Alpine_Porsche_Stopover.jpg',
+        'Sample Phone Photo.jpg',
         false
       );
     }
     onOpenRemote();
   };
 
-  const handleAddCustomStream = () => {
-    if (!isPro && customStreams.length >= 1) {
-      openPaywall(
-        'The Free Starter plan includes 1 saved stream URL. Upgrade to ParkCast Pro for unlimited M3U8 / IPTV playlists and custom streams.'
-      );
-      return;
-    }
-    if (!customUrl.trim()) return;
-    playCustomUrl(customTitle || 'Custom Car Stream', customUrl);
-    setCustomTitle('');
-    setCustomUrl('');
-    setShowIptvForm(false);
-    onOpenRemote();
-  };
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Top Plan & Connection Header */}
+      {/* Simple, Friendly Header */}
       <View style={styles.headerRow}>
-        <View>
-          <View style={styles.brandRow}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoBadgeText}>P</Text>
-            </View>
-            <Text style={styles.brandTitle}>{BRAND.appName}</Text>
-            <View style={[styles.planBadge, isPro ? styles.planBadgePro : styles.planBadgeFree]}>
-              <Text style={[styles.planBadgeText, isPro && styles.planBadgeTextPro]}>
-                {isPro ? (isTrialActive ? 'PRO TRIAL' : 'PRO HD') : 'FREE PLAN'}
-              </Text>
-            </View>
+        <View style={styles.brandRow}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoText}>P</Text>
           </View>
-          <Text style={styles.brandSubtitle}>{BRAND.tagline}</Text>
+          <View>
+            <Text style={styles.brandTitle}>{BRAND.appName}</Text>
+            <Text style={styles.brandSubtitle}>Car Screen Player</Text>
+          </View>
         </View>
 
         <TouchableOpacity
           testID="header-upgrade-btn"
-          style={[styles.upgradePill, isPro && styles.upgradePillPro]}
+          style={[styles.planPill, isPro ? styles.planPillPro : styles.planPillFree]}
           onPress={() => openPaywall()}
         >
-          <Text style={styles.upgradePillText}>
-            {isPro ? 'Manage Pro' : `Upgrade · ${formatTimer(remainingSessionSeconds)}`}
+          <Text style={[styles.planPillText, isPro && styles.planPillTextPro]}>
+            {isPro
+              ? isTrialActive
+                ? '★ Pro Trial Active'
+                : '★ Pro Plan'
+              : `Free · ${formatMinutesLeft(remainingSessionSeconds)}`}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* STEP 1: Vehicle Connection Status Card */}
-      <View style={styles.sectionCard}>
-        <View style={styles.stepHeaderRow}>
-          <Text style={styles.stepTag}>STEP 1 · VEHICLE LINK</Text>
-          <View style={styles.statusDotRow}>
+      {/* Clean Connection Bar */}
+      <View style={styles.connectionCard}>
+        <View style={styles.connectionMainRow}>
+          <View style={styles.connectionLeft}>
             <View
               style={[
-                styles.statusDot,
+                styles.greenDot,
                 {
                   backgroundColor:
-                    connectionTarget !== 'disconnected'
-                      ? BRAND.colors.statusConnected
-                      : BRAND.colors.statusWarning,
+                    connectionTarget !== 'disconnected' ? '#10B981' : '#F59E0B',
                 },
               ]}
             />
-            <Text style={styles.statusLabel}>
-              {connectionTarget !== 'disconnected' ? carName : 'No Car Connected'}
-            </Text>
+            <View>
+              <Text style={styles.connectionTitle}>
+                {relayConnected
+                  ? `Connected to Car Screen (Code ${roomCode})`
+                  : `Car Screen Code: ${roomCode}`}
+              </Text>
+              <Text style={styles.connectionSub}>
+                {relayConnected
+                  ? 'Ready to play videos and photos'
+                  : 'Tap "Change" if your car shows a different code'}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.connectButtonRow}>
           <TouchableOpacity
             testID="connect-car-pin-btn"
-            style={[
-              styles.connectModeBtn,
-              connectionTarget === 'car_receiver' && styles.connectModeBtnActive,
-            ]}
-            onPress={() => setShowPinEditor(!showPinEditor)}
+            style={styles.changeBtn}
+            onPress={() => setShowConnectionSettings(!showConnectionSettings)}
           >
-            <Text style={styles.connectModeTitle}>Car Screen PIN: {roomCode}</Text>
-            <Text style={styles.connectModeSub}>
-              {relayConnected ? 'LAN Relay Live · Tap to change' : 'Instant Pair · Tap to edit PIN'}
+            <Text style={styles.changeBtnText}>
+              {showConnectionSettings ? 'Close' : 'Change'}
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            testID="connect-airplay-btn"
-            style={[
-              styles.connectModeBtn,
-              connectionTarget === 'airplay' && styles.connectModeBtnActive,
-            ]}
-            onPress={connectToAirPlay}
-          >
-            <Text style={styles.connectModeTitle}>AirPlay Wireless</Text>
-            <Text style={styles.connectModeSub}>Direct iOS Audio/Video Route</Text>
           </TouchableOpacity>
         </View>
 
-        {showPinEditor && (
-          <View style={styles.pinEditorBox}>
-            <Text style={styles.pinHelpLabel}>
-              Car Relay IP:Port (from `npm run relay` on your laptop) & 4-Digit PIN:
-            </Text>
-            <View style={styles.pinEditorRow}>
-              <TextInput
-                style={[styles.pinInput, { flex: 1.8 }]}
-                value={relayHostInput}
-                onChangeText={setRelayHostInput}
-                placeholder="192.168.1.x:4848"
-                placeholderTextColor={BRAND.colors.textMuted}
-                autoCapitalize="none"
-              />
-              <TextInput
-                style={[styles.pinInput, { flex: 0.8 }]}
-                value={pinInput}
-                onChangeText={setPinInput}
-                placeholder="PIN"
-                placeholderTextColor={BRAND.colors.textMuted}
-                maxLength={6}
-              />
-            </View>
-            <View style={[styles.pinEditorRow, { marginTop: 8 }]}>
-              <TouchableOpacity
-                style={[styles.pinApplyBtn, { flex: 1, alignItems: 'center' }]}
-                onPress={() => {
-                  connectToCarReceiver(pinInput, undefined, relayHostInput);
-                  setShowPinEditor(false);
-                }}
-              >
-                <Text style={styles.pinApplyText}>Connect & Pair Car Screen</Text>
-              </TouchableOpacity>
-              {connectionTarget !== 'disconnected' && (
-                <TouchableOpacity style={styles.pinDisconnectBtn} onPress={disconnectCast}>
-                  <Text style={styles.pinDisconnectText}>Disconnect</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+        {showConnectionSettings && (
+          <View style={styles.connectionExpandBox}>
+            <Text style={styles.inputLabel}>4-Digit Car Screen Code</Text>
+            <TextInput
+              style={styles.textInput}
+              value={pinInput}
+              onChangeText={setPinInput}
+              placeholder="4829"
+              placeholderTextColor="#94A3B8"
+              maxLength={6}
+            />
+            <Text style={styles.inputLabel}>Car Display Address (Wi-Fi)</Text>
+            <TextInput
+              style={styles.textInput}
+              value={relayHostInput}
+              onChangeText={setRelayHostInput}
+              placeholder="10.0.0.87:4848"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={styles.saveConnectBtn}
+              onPress={() => {
+                connectToCarReceiver(pinInput, undefined, relayHostInput);
+                setShowConnectionSettings(false);
+              }}
+            >
+              <Text style={styles.saveConnectBtnText}>Save & Connect</Text>
+            </TouchableOpacity>
           </View>
         )}
-
-        {/* Parked Safety Toggle */}
-        <View style={styles.parkedSafetyRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.parkedTitle}>Vehicle Parked Safety Confirmation</Text>
-            <Text style={styles.parkedSub}>
-              Video output is only enabled while your vehicle is safely parked.
-            </Text>
-          </View>
-          <Switch
-            testID="parked-safety-switch"
-            value={isParkedConfirmed}
-            onValueChange={setParkedConfirmed}
-            trackColor={{ false: '#334155', true: '#059669' }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
       </View>
 
-      {/* Free Plan Usage Bar (only visible on Free Tier) */}
-      {!isPro && (
-        <View style={styles.freeUsageBanner}>
-          <View style={styles.freeUsageTop}>
-            <Text style={styles.freeUsageTitle}>
-              Free Starter Plan · {formatTimer(remainingSessionSeconds)} session left
-            </Text>
-            <Text style={styles.freeUsageMeta}>
-              Max 480p SD · {dailyLocalVideosUsed}/{maxDailyLocalVideos} Local Videos Today
-            </Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${Math.max(
-                    4,
-                    Math.round((remainingSessionSeconds / BRAND.freeLimits.maxSessionSeconds) * 100)
-                  )}%`,
-                },
-              ]}
-            />
-          </View>
-          <View style={styles.freeBannerActions}>
-            <TouchableOpacity
-              testID="unlock-pro-banner-btn"
-              style={styles.unlockProInlineBtn}
-              onPress={() =>
-                openPaywall('Unlock Unlimited 1080p/4K Streaming, Screen Mirroring & IPTV Playlists.')
-              }
-            >
-              <Text style={styles.unlockProInlineText}>Unlock Pro 1080p/4K ($2.08/mo)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              testID="simulate-timer-expiry-btn"
-              style={styles.testTimerBtn}
-              onPress={fastForwardFreeTimerForTesting}
-            >
-              <Text style={styles.testTimerBtnText}>Test 5s Left</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Uploading Progress Pill */}
+      {uploadingLabel && (
+        <View style={styles.uploadingBanner}>
+          <ActivityIndicator size="small" color="#2563EB" />
+          <Text style={styles.uploadingBannerText}>{uploadingLabel}</Text>
         </View>
       )}
 
-      {/* STEP 2: 4 Large Automotive Source Cards */}
-      <Text style={styles.sectionHeading}>STEP 2 · CHOOSE WHAT TO CAST</Text>
-      <View style={styles.gridContainer}>
-        {/* Card 1: YouTube & Web Video */}
+      {/* 4 Big, Simple Action Tiles */}
+      <Text style={styles.sectionTitle}>What would you like to show on your car screen?</Text>
+
+      <View style={styles.tileGrid}>
+        {/* Tile 1: Watch YouTube */}
         <TouchableOpacity
           testID="card-youtube-web"
-          style={styles.sourceCard}
-          onPress={() => setShowYtModal(!showYtModal)}
+          style={styles.actionTile}
+          onPress={() => setShowYtBox(!showYtBox)}
         >
-          <View style={[styles.sourceIconWrap, { backgroundColor: '#1E3A8A' }]}>
-            <Text style={styles.sourceIconText}>YT</Text>
+          <View style={[styles.tileBadgeCircle, { backgroundColor: '#FEE2E2' }]}>
+            <Text style={[styles.tileBadgeIcon, { color: '#DC2626' }]}>▶</Text>
           </View>
-          <Text style={styles.sourceCardTitle}>YouTube & Web</Text>
-          <Text style={styles.sourceCardSub}>
-            Paste any YouTube link or stream to car receiver
-          </Text>
-          <View style={styles.cardBadgeRow}>
-            <Text style={styles.cardBadgeText}>{isPro ? '1080p / 4K' : 'Tap to Cast YouTube'}</Text>
-          </View>
+          <Text style={styles.tileTitle}>Watch YouTube</Text>
+          <Text style={styles.tileDesc}>Paste any YouTube link or pick a video</Text>
         </TouchableOpacity>
 
-        {/* Card 2: Mirror iPhone Screen */}
+        {/* Tile 2: Phone Photos */}
+        <TouchableOpacity
+          testID="pick-local-photo-btn"
+          style={styles.actionTile}
+          onPress={() => handlePickCameraRoll(false)}
+        >
+          <View style={[styles.tileBadgeCircle, { backgroundColor: '#DCFCE7' }]}>
+            <Text style={[styles.tileBadgeIcon, { color: '#16A34A' }]}>🖼</Text>
+          </View>
+          <Text style={styles.tileTitle}>Phone Photos</Text>
+          <Text style={styles.tileDesc}>Show photos from your iPhone on the car screen</Text>
+        </TouchableOpacity>
+
+        {/* Tile 3: Phone Videos */}
+        <TouchableOpacity
+          testID="pick-local-video-btn"
+          style={styles.actionTile}
+          onPress={() => handlePickCameraRoll(true)}
+        >
+          <View style={[styles.tileBadgeCircle, { backgroundColor: '#DBEAFE' }]}>
+            <Text style={[styles.tileBadgeIcon, { color: '#2563EB' }]}>🎬</Text>
+          </View>
+          <Text style={styles.tileTitle}>Phone Videos</Text>
+          <Text style={styles.tileDesc}>Play videos saved in your iPhone camera roll</Text>
+        </TouchableOpacity>
+
+        {/* Tile 4: Mirror My Screen */}
         <TouchableOpacity
           testID="card-screen-mirror"
           style={[
-            styles.sourceCard,
-            mirrorMode === 'screen_broadcast' && styles.sourceCardActive,
+            styles.actionTile,
+            mirrorMode === 'screen_broadcast' && styles.actionTileActive,
           ]}
           onPress={handleStartScreenMirror}
         >
-          <View style={[styles.sourceIconWrap, { backgroundColor: '#4C1D95' }]}>
-            <Text style={styles.sourceIconText}>iOS</Text>
+          <View style={styles.tileTopRow}>
+            <View style={[styles.tileBadgeCircle, { backgroundColor: '#F3E8FF' }]}>
+              <Text style={[styles.tileBadgeIcon, { color: '#7C3AED' }]}>📱</Text>
+            </View>
+            {!isPro && (
+              <View style={styles.proTag}>
+                <Text style={styles.proTagText}>PRO</Text>
+              </View>
+            )}
           </View>
-          <View style={styles.titleWithBadge}>
-            <Text style={styles.sourceCardTitle}>Screen Mirror</Text>
-            {!isPro && <Text style={styles.proMiniTag}>PRO</Text>}
-          </View>
-          <Text style={styles.sourceCardSub}>
-            Live ReplayKit broadcast of your iPhone apps to car screen
-          </Text>
-          <View style={styles.cardBadgeRow}>
-            <Text style={styles.cardBadgeText}>
-              {isPro ? '60fps Live Broadcast' : 'Tap to Unlock Pro'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Card 3: Camera Roll Videos & Photos */}
-        <View style={styles.sourceCard}>
-          <View style={[styles.sourceIconWrap, { backgroundColor: '#065F46' }]}>
-            <Text style={styles.sourceIconText}>HD</Text>
-          </View>
-          <Text style={styles.sourceCardTitle}>Phone Videos & Photos</Text>
-          <Text style={styles.sourceCardSub}>
-            Cast camera roll movies & trip photo albums
-          </Text>
-          <View style={styles.dualActionRow}>
-            <TouchableOpacity
-              testID="pick-local-video-btn"
-              style={styles.miniActionBtn}
-              onPress={() => handlePickCameraRoll(true)}
-            >
-              <Text style={styles.miniActionText}>Cast Video</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              testID="pick-local-photo-btn"
-              style={[styles.miniActionBtn, styles.miniActionBtnSecondary]}
-              onPress={() => handlePickCameraRoll(false)}
-            >
-              <Text style={styles.miniActionText}>Cast Photo</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Card 4: IPTV & Custom Stream URL */}
-        <TouchableOpacity
-          testID="card-iptv-streams"
-          style={styles.sourceCard}
-          onPress={() => setShowIptvForm(!showIptvForm)}
-        >
-          <View style={[styles.sourceIconWrap, { backgroundColor: '#7C2D12' }]}>
-            <Text style={styles.sourceIconText}>TV</Text>
-          </View>
-          <View style={styles.titleWithBadge}>
-            <Text style={styles.sourceCardTitle}>IPTV & M3U8 URL</Text>
-            {!isPro && <Text style={styles.proMiniTag}>1 FREE</Text>}
-          </View>
-          <Text style={styles.sourceCardSub}>
-            Play direct HLS .m3u8 live channels or .mp4 links
-          </Text>
-          <View style={styles.cardBadgeRow}>
-            <Text style={styles.cardBadgeText}>Add Stream Link</Text>
-          </View>
+          <Text style={styles.tileTitle}>Mirror Screen</Text>
+          <Text style={styles.tileDesc}>Mirror web pages & apps live to your car</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Expandable YouTube URL / Video ID Launcher */}
-      {showYtModal && (
-        <View style={styles.iptvFormCard}>
-          <Text style={styles.iptvFormTitle}>Cast Any YouTube Video to Car Screen</Text>
+      {/* Simple YouTube Link Box (Opens when Watch YouTube is tapped) */}
+      {showYtBox && (
+        <View style={styles.youtubePopupCard}>
+          <Text style={styles.youtubePopupTitle}>Play a YouTube Video in Your Car</Text>
           <TextInput
-            style={styles.iptvInput}
-            placeholder="Paste YouTube URL (e.g. https://youtu.be/ysz5S6PUM-U)"
-            placeholderTextColor={BRAND.colors.textMuted}
+            style={styles.textInput}
+            placeholder="Paste YouTube link here..."
+            placeholderTextColor="#94A3B8"
             value={ytInput}
             onChangeText={setYtInput}
             autoCapitalize="none"
           />
-          <View style={styles.iptvBtnRow}>
+          <View style={styles.youtubeBtnRow}>
             <TouchableOpacity
-              style={[styles.iptvCastBtn, { marginRight: 8, backgroundColor: '#334155' }]}
-              onPress={() => {
-                selectMedia(MEDIA_PRESETS[0]);
-                setShowYtModal(false);
-                onOpenRemote();
-              }}
-            >
-              <Text style={styles.iptvCastBtnText}>Play 4K Demo Drive</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iptvCastBtn}
+              style={styles.youtubePrimaryBtn}
               onPress={() => {
                 playYouTubeUrlOrQuery(ytInput || 'https://youtu.be/ysz5S6PUM-U');
                 setYtInput('');
-                setShowYtModal(false);
+                setShowYtBox(false);
                 onOpenRemote();
               }}
             >
-              <Text style={styles.iptvCastBtnText}>Cast YouTube to Car</Text>
+              <Text style={styles.youtubePrimaryBtnText}>Play on Car Screen</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* Expandable Custom Stream / IPTV URL Form */}
-      {showIptvForm && (
-        <View style={styles.iptvFormCard}>
-          <Text style={styles.iptvFormTitle}>Cast Direct Video / HLS (.m3u8 / .mp4) URL</Text>
-          <TextInput
-            style={styles.iptvInput}
-            placeholder="Channel or Movie Title (e.g. Live Sports HD)"
-            placeholderTextColor={BRAND.colors.textMuted}
-            value={customTitle}
-            onChangeText={setCustomTitle}
-          />
-          <TextInput
-            style={styles.iptvInput}
-            placeholder="https://example.com/stream.m3u8 or video.mp4"
-            placeholderTextColor={BRAND.colors.textMuted}
-            value={customUrl}
-            onChangeText={setCustomUrl}
-            autoCapitalize="none"
-          />
-          <View style={styles.iptvBtnRow}>
-            <TouchableOpacity style={styles.iptvCastBtn} onPress={handleAddCustomStream}>
-              <Text style={styles.iptvCastBtnText}>Beam to Car Display</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Now Playing Mini Bar */}
+      <View style={styles.nowPlayingBar}>
+        <View style={{ flex: 1, marginRight: 10 }}>
+          <Text style={styles.nowPlayingLabel}>NOW ON CAR SCREEN</Text>
+          <Text style={styles.nowPlayingTitle} numberOfLines={1}>
+            {mirrorMode === 'screen_broadcast'
+              ? 'Live iPhone Screen Mirror'
+              : mirrorMode === 'photo_slideshow'
+              ? 'iPhone Photo Display'
+              : activeMedia.title}
+          </Text>
         </View>
-      )}
-
-      {/* STEP 3: Ready-to-Cast Cinema & Live Channels */}
-      <View style={styles.step3HeaderRow}>
-        <Text style={styles.sectionHeading}>STEP 3 · INSTANT CAR CINEMA CHANNELS</Text>
-        <TouchableOpacity testID="open-remote-btn" onPress={onOpenRemote}>
-          <Text style={styles.openRemoteLink}>Open Touchpad Remote →</Text>
+        <TouchableOpacity
+          style={styles.nowPlayingPlayBtn}
+          onPress={togglePlayPause}
+        >
+          <Text style={styles.nowPlayingPlayText}>
+            {isPlaying ? 'Pause' : 'Play'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          testID="open-remote-btn"
+          style={styles.nowPlayingRemoteBtn}
+          onPress={onOpenRemote}
+        >
+          <Text style={styles.nowPlayingRemoteText}>Remote →</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Ready-to-Watch Videos */}
+      <Text style={styles.sectionTitle}>Quick-Play Sample Videos</Text>
       {MEDIA_PRESETS.map((item) => {
         const isCurrent = activeMedia.id === item.id && mirrorMode === 'off';
         return (
           <TouchableOpacity
             key={item.id}
             testID={`preset-${item.id}`}
-            style={[styles.presetRow, isCurrent && styles.presetRowActive]}
+            style={[styles.videoRowCard, isCurrent && styles.videoRowCardActive]}
             onPress={() => handleSelectPreset(item)}
           >
-            <View style={[styles.presetThumb, { backgroundColor: item.thumbnailColor }]}>
-              <Text style={styles.presetThumbBadge}>{item.durationLabel}</Text>
+            <View
+              style={[
+                styles.videoColorDot,
+                { backgroundColor: item.thumbnailColor },
+              ]}
+            >
+              <Text style={styles.videoDotIcon}>▶</Text>
             </View>
-            <View style={styles.presetInfo}>
-              <View style={styles.presetTitleRow}>
-                <Text style={styles.presetTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
+            <View style={{ flex: 1 }}>
+              <View style={styles.videoRowTitleWrap}>
+                <Text style={styles.videoRowTitle}>{item.title}</Text>
                 {item.requiresPro && !isPro && (
-                  <View style={styles.proLockPill}>
-                    <Text style={styles.proLockPillText}>PRO</Text>
+                  <View style={styles.proTag}>
+                    <Text style={styles.proTagText}>PRO</Text>
                   </View>
                 )}
               </View>
-              <Text style={styles.presetSubtitle} numberOfLines={1}>
-                {item.subtitle}
+              <Text style={styles.videoRowSub}>
+                {item.subtitle} · {item.durationLabel}
               </Text>
             </View>
-            <View style={[styles.castActionPill, isCurrent && styles.castActionPillActive]}>
-              <Text style={styles.castActionText}>{isCurrent ? 'CASTING' : 'CAST'}</Text>
-            </View>
+            <Text style={styles.videoPlayLink}>
+              {isCurrent ? 'Playing' : 'Play'}
+            </Text>
           </TouchableOpacity>
         );
       })}
 
-      {/* Expo Go Developer Sandbox Bar for testing Free vs Paid transitions */}
-      <View style={styles.devSandboxCard}>
-        <Text style={styles.devSandboxTitle}>Expo Go Subscription Sandbox Controls</Text>
-        <Text style={styles.devSandboxSub}>
-          Current Active Tier: <Text style={{ color: '#38BDF8', fontWeight: '700' }}>{planId.toUpperCase()}</Text> · In production builds, RevenueCat + Apple StoreKit 2 manages this automatically.
-        </Text>
-        <View style={styles.devSandboxBtnRow}>
+      {/* Simple Upgrade Card for Free Users */}
+      {!isPro ? (
+        <View style={styles.upgradeBannerCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.upgradeBannerTitle}>Upgrade to ParkCast Pro</Text>
+            <Text style={styles.upgradeBannerSub}>
+              Remove the 15-minute time limit, unlock Full HD 1080p, and mirror your screen.
+            </Text>
+          </View>
           <TouchableOpacity
-            style={styles.devBtn}
-            onPress={() => openPaywall('Previewing the ParkCast Pro Paywall')}
+            testID="unlock-pro-banner-btn"
+            style={styles.upgradeBannerBtn}
+            onPress={() => openPaywall()}
           >
-            <Text style={styles.devBtnText}>Open Paywall</Text>
+            <Text style={styles.upgradeBannerBtnText}>Try Free</Text>
           </TouchableOpacity>
-          {isPro && (
-            <TouchableOpacity
-              testID="reset-to-free-btn"
-              style={styles.devBtn}
-              onPress={downgradeToFreeForTesting}
-            >
-              <Text style={styles.devBtnText}>Switch Back to Free Plan</Text>
-            </TouchableOpacity>
-          )}
         </View>
-      </View>
+      ) : (
+        <View style={styles.proActiveFooter}>
+          <Text style={styles.proActiveFooterText}>
+            ★ ParkCast Pro is active (Unlimited HD & Screen Mirroring unlocked)
+          </Text>
+          <TouchableOpacity
+            testID="reset-to-free-btn"
+            onPress={downgradeToFreeForTesting}
+          >
+            <Text style={styles.switchBackLink}>Switch back to Free mode</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!isPro && (
+        <TouchableOpacity
+          testID="simulate-timer-expiry-btn"
+          style={styles.subtleTestLink}
+          onPress={fastForwardFreeTimerForTesting}
+        >
+          <Text style={styles.subtleTestLinkText}>
+            Demo: Test what happens when 15-min Free timer ends
+          </Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
-
-function useCastSessionWithSub() {
-  const cast = useCastSession();
-  const { recordLocalVideoCast } = useSubscription();
-  return {
-    ...cast,
-    recordLocalVideoCastFromSession: recordLocalVideoCast,
-  };
-}
 
 const styles = StyleSheet.create({
   container: {
@@ -577,534 +446,404 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.colors.bgPrimary,
   },
   content: {
-    padding: 16,
-    paddingBottom: 36,
+    padding: 18,
+    paddingBottom: 40,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  logoBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+  logoCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: BRAND.colors.accentBlue,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoBadgeText: {
+  logoText: {
     color: '#FFFFFF',
+    fontSize: 20,
     fontWeight: '800',
-    fontSize: 16,
   },
   brandTitle: {
     color: BRAND.colors.textPrimary,
     fontSize: 22,
     fontWeight: '800',
-    letterSpacing: 0.3,
   },
   brandSubtitle: {
     color: BRAND.colors.textSecondary,
     fontSize: 12,
-    marginTop: 2,
   },
-  planBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  planBadgeFree: {
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: '#475569',
-  },
-  planBadgePro: {
-    backgroundColor: '#F59E0B22',
-    borderWidth: 1,
-    borderColor: BRAND.colors.accentGold,
-  },
-  planBadgeText: {
-    color: '#CBD5E1',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  planBadgeTextPro: {
-    color: BRAND.colors.accentGold,
-  },
-  upgradePill: {
-    backgroundColor: BRAND.colors.accentBlue,
+  planPill: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 20,
   },
-  upgradePillPro: {
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: BRAND.colors.accentGold,
+  planPillFree: {
+    backgroundColor: '#E0E7FF',
   },
-  upgradePillText: {
-    color: '#FFFFFF',
+  planPillPro: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  planPillText: {
+    color: '#1D4ED8',
     fontSize: 12,
     fontWeight: '700',
   },
-  sectionCard: {
-    backgroundColor: BRAND.colors.bgCard,
+  planPillTextPro: {
+    color: '#B45309',
+  },
+  connectionCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: BRAND.colors.borderSubtle,
-    marginBottom: 14,
   },
-  stepHeaderRow: {
+  connectionMainRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
   },
-  stepTag: {
-    color: BRAND.colors.accentCyan,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  statusDotRow: {
+  connectionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusLabel: {
-    color: BRAND.colors.textPrimary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  connectButtonRow: {
-    flexDirection: 'row',
     gap: 10,
-  },
-  connectModeBtn: {
     flex: 1,
-    backgroundColor: BRAND.colors.bgSecondary,
-    borderRadius: 12,
-    padding: 11,
-    borderWidth: 1,
-    borderColor: '#1E293B',
   },
-  connectModeBtnActive: {
-    borderColor: BRAND.colors.accentBlue,
-    backgroundColor: '#1E3A8A33',
+  greenDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
-  connectModeTitle: {
+  connectionTitle: {
     color: BRAND.colors.textPrimary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
-  connectModeSub: {
+  connectionSub: {
     color: BRAND.colors.textSecondary,
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 12,
+    marginTop: 1,
   },
-  pinEditorBox: {
-    marginTop: 10,
-    backgroundColor: BRAND.colors.bgSecondary,
-    padding: 10,
+  changeBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: BRAND.colors.borderSubtle,
   },
-  pinHelpLabel: {
+  changeBtnText: {
+    color: BRAND.colors.accentBlue,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  connectionExpandBox: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  inputLabel: {
     color: BRAND.colors.textSecondary,
-    fontSize: 11,
-    marginBottom: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  pinEditorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  pinInput: {
-    flex: 1,
-    backgroundColor: BRAND.colors.bgPrimary,
+  textInput: {
+    backgroundColor: '#F8FAFC',
     color: BRAND.colors.textPrimary,
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    fontSize: 14,
     borderWidth: 1,
-    borderColor: BRAND.colors.borderSubtle,
+    borderColor: '#CBD5E1',
+    marginBottom: 10,
+  },
+  saveConnectBtn: {
+    backgroundColor: BRAND.colors.accentBlue,
+    paddingVertical: 11,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  saveConnectBtnText: {
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
   },
-  pinApplyBtn: {
-    backgroundColor: BRAND.colors.accentBlue,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 10,
-  },
-  pinApplyText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  pinDisconnectBtn: {
-    backgroundColor: '#7F1D1D',
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    borderRadius: 10,
-  },
-  pinDisconnectText: {
-    color: '#FCA5A5',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  parkedSafetyRow: {
+  uploadingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-  },
-  parkedTitle: {
-    color: BRAND.colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  parkedSub: {
-    color: BRAND.colors.textSecondary,
-    fontSize: 11,
-    marginTop: 1,
-  },
-  freeUsageBanner: {
-    backgroundColor: '#172554',
-    borderRadius: 14,
+    gap: 10,
+    backgroundColor: '#DBEAFE',
     padding: 12,
-    borderWidth: 1,
-    borderColor: '#2563EB',
+    borderRadius: 12,
     marginBottom: 14,
   },
-  freeUsageTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    marginBottom: 6,
-  },
-  freeUsageTitle: {
-    color: '#F8FAFC',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  freeUsageMeta: {
-    color: '#93C5FD',
-    fontSize: 11,
-  },
-  progressTrack: {
-    height: 6,
-    backgroundColor: '#0F172A',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#38BDF8',
-  },
-  freeBannerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  unlockProInlineBtn: {
-    flex: 1,
-    backgroundColor: BRAND.colors.accentGold,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  unlockProInlineText: {
-    color: '#080C14',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  testTimerBtn: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#475569',
-  },
-  testTimerBtnText: {
-    color: '#E2E8F0',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  sectionHeading: {
-    color: BRAND.colors.accentCyan,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
-  },
-  sourceCard: {
-    width: '48%',
-    backgroundColor: BRAND.colors.bgCard,
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: BRAND.colors.borderSubtle,
-    justifyContent: 'space-between',
-  },
-  sourceCardActive: {
-    borderColor: BRAND.colors.accentPurple,
-    backgroundColor: '#2E106544',
-  },
-  sourceIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  sourceIconText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  titleWithBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sourceCardTitle: {
-    color: BRAND.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  proMiniTag: {
-    backgroundColor: BRAND.colors.accentGold,
-    color: '#080C14',
-    fontSize: 9,
-    fontWeight: '800',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  sourceCardSub: {
-    color: BRAND.colors.textSecondary,
-    fontSize: 11,
-    lineHeight: 15,
-    marginBottom: 10,
-  },
-  cardBadgeRow: {
-    alignSelf: 'flex-start',
-    backgroundColor: BRAND.colors.bgSecondary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  cardBadgeText: {
-    color: '#38BDF8',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  dualActionRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  miniActionBtn: {
-    flex: 1,
-    backgroundColor: BRAND.colors.accentBlue,
-    paddingVertical: 6,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  miniActionBtnSecondary: {
-    backgroundColor: '#334155',
-  },
-  miniActionText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  iptvFormCard: {
-    backgroundColor: BRAND.colors.bgCardElevated,
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: BRAND.colors.accentBlue,
-  },
-  iptvFormTitle: {
-    color: BRAND.colors.textPrimary,
+  uploadingBannerText: {
+    color: '#1E40AF',
     fontSize: 13,
     fontWeight: '700',
-    marginBottom: 8,
   },
-  iptvInput: {
-    backgroundColor: BRAND.colors.bgPrimary,
+  sectionTitle: {
     color: BRAND.colors.textPrimary,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 12,
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  tileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 18,
+  },
+  actionTile: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: BRAND.colors.borderSubtle,
   },
-  iptvBtnRow: {
+  actionTileActive: {
+    borderColor: '#7C3AED',
+    backgroundColor: '#FAF5FF',
+  },
+  tileTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  tileBadgeCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  tileBadgeIcon: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  tileTitle: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  tileDesc: {
+    color: BRAND.colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  proTag: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  proTagText: {
+    color: '#B45309',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  youtubePopupCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  youtubePopupTitle: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  youtubeBtnRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
-  iptvCastBtn: {
+  youtubePrimaryBtn: {
+    backgroundColor: BRAND.colors.accentBlue,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  youtubePrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  nowPlayingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  nowPlayingLabel: {
+    color: '#2563EB',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  nowPlayingTitle: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  nowPlayingPlayBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    marginRight: 8,
+  },
+  nowPlayingPlayText: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  nowPlayingRemoteBtn: {
     backgroundColor: BRAND.colors.accentBlue,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
   },
-  iptvCastBtnText: {
+  nowPlayingRemoteText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
-  step3HeaderRow: {
+  videoRowCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  openRemoteLink: {
-    color: '#38BDF8',
-    fontSize: 12,
-    fontWeight: '700',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
     marginBottom: 10,
-  },
-  presetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: BRAND.colors.bgCard,
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 8,
     borderWidth: 1,
     borderColor: BRAND.colors.borderSubtle,
   },
-  presetRowActive: {
-    borderColor: BRAND.colors.statusConnected,
-    backgroundColor: '#064E3B33',
+  videoRowCardActive: {
+    borderColor: BRAND.colors.accentBlue,
+    backgroundColor: '#F8FAFC',
   },
-  presetThumb: {
-    width: 66,
+  videoColorDot: {
+    width: 44,
     height: 44,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
-  presetThumbBadge: {
+  videoDotIcon: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 16,
     fontWeight: '800',
   },
-  presetInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-  presetTitleRow: {
+  videoRowTitleWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  presetTitle: {
+  videoRowTitle: {
     color: BRAND.colors.textPrimary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    flexShrink: 1,
   },
-  proLockPill: {
-    backgroundColor: BRAND.colors.accentGold,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  proLockPillText: {
-    color: '#080C14',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  presetSubtitle: {
+  videoRowSub: {
     color: BRAND.colors.textSecondary,
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 2,
   },
-  castActionPill: {
-    backgroundColor: BRAND.colors.bgSecondary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+  videoPlayLink: {
+    color: BRAND.colors.accentBlue,
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  upgradeBannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#FDE68A',
+    gap: 12,
   },
-  castActionPillActive: {
-    backgroundColor: BRAND.colors.statusConnected,
-    borderColor: BRAND.colors.statusConnected,
-  },
-  castActionText: {
-    color: '#FFFFFF',
-    fontSize: 10,
+  upgradeBannerTitle: {
+    color: '#92400E',
+    fontSize: 15,
     fontWeight: '800',
   },
-  devSandboxCard: {
-    marginTop: 14,
-    backgroundColor: '#0F172A',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#1E293B',
+  upgradeBannerSub: {
+    color: '#B45309',
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 17,
   },
-  devSandboxTitle: {
+  upgradeBannerBtn: {
+    backgroundColor: '#D97706',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  upgradeBannerBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  proActiveFooter: {
+    marginTop: 10,
+    padding: 14,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  proActiveFooterText: {
+    color: '#065F46',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  switchBackLink: {
+    color: '#047857',
+    fontSize: 12,
+    textDecorationLine: 'underline',
+    marginTop: 4,
+  },
+  subtleTestLink: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  subtleTestLinkText: {
     color: '#94A3B8',
     fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  devSandboxSub: {
-    color: '#64748B',
-    fontSize: 11,
-    marginTop: 4,
-    lineHeight: 16,
-  },
-  devSandboxBtnRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  devBtn: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  devBtnText: {
-    color: '#E2E8F0',
-    fontSize: 11,
-    fontWeight: '600',
   },
 });

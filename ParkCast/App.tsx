@@ -38,13 +38,12 @@ const ParkCastShell: React.FC = () => {
   return (
     <SubscriptionProvider isCastingActive={isCastingActive}>
       <SafeAreaView style={styles.safeRoot}>
-        <StatusBar barStyle="light-content" />
+        <StatusBar barStyle="dark-content" />
 
-        {/* Top Mode Switcher Bar (lets you test iPhone Controller, Car Display Receiver, or Both side-by-side) */}
+        {/* Clean Top Navigation Bar */}
         <View style={styles.modeBar}>
-          <View style={styles.modeBarLeft}>
-            <Text style={styles.modeBarLabel}>VIEW MODE:</Text>
-            {isWideScreen && (
+          {isWideScreen && (
+            <View style={styles.modeBarLeft}>
               <TouchableOpacity
                 testID="mode-split-btn"
                 style={[
@@ -59,45 +58,45 @@ const ParkCastShell: React.FC = () => {
                     effectiveMode === 'auto_split' && styles.modeChipTextActive,
                   ]}
                 >
-                  Split Studio (iPhone + Car Screen)
+                  Phone + Car Preview
                 </Text>
               </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              testID="mode-iphone-btn"
-              style={[
-                styles.modeChip,
-                effectiveMode === 'iphone_only' && styles.modeChipActive,
-              ]}
-              onPress={() => setLayoutMode('iphone_only')}
-            >
-              <Text
+              <TouchableOpacity
+                testID="mode-iphone-btn"
                 style={[
-                  styles.modeChipText,
-                  effectiveMode === 'iphone_only' && styles.modeChipTextActive,
+                  styles.modeChip,
+                  effectiveMode === 'iphone_only' && styles.modeChipActive,
                 ]}
+                onPress={() => setLayoutMode('iphone_only')}
               >
-                iPhone Controller (Expo Go)
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              testID="mode-car-btn"
-              style={[
-                styles.modeChip,
-                effectiveMode === 'car_only' && styles.modeChipActive,
-              ]}
-              onPress={() => setLayoutMode('car_only')}
-            >
-              <Text
+                <Text
+                  style={[
+                    styles.modeChipText,
+                    effectiveMode === 'iphone_only' && styles.modeChipTextActive,
+                  ]}
+                >
+                  Phone Only
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                testID="mode-car-btn"
                 style={[
-                  styles.modeChipText,
-                  effectiveMode === 'car_only' && styles.modeChipTextActive,
+                  styles.modeChip,
+                  effectiveMode === 'car_only' && styles.modeChipActive,
                 ]}
+                onPress={() => setLayoutMode('car_only')}
               >
-                Car Display Receiver
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <Text
+                  style={[
+                    styles.modeChipText,
+                    effectiveMode === 'car_only' && styles.modeChipTextActive,
+                  ]}
+                >
+                  Car Screen Only
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {effectiveMode !== 'car_only' && (
             <View style={styles.phoneNavTabs}>
@@ -115,7 +114,7 @@ const ParkCastShell: React.FC = () => {
                     phoneTab === 'dashboard' && styles.navTabTextActive,
                   ]}
                 >
-                  1. Sources
+                  Home
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -132,7 +131,7 @@ const ParkCastShell: React.FC = () => {
                     phoneTab === 'remote' && styles.navTabTextActive,
                   ]}
                 >
-                  2. Player & Car Remote
+                  Car Remote
                 </Text>
               </TouchableOpacity>
             </View>
@@ -157,7 +156,6 @@ const ParkCastShell: React.FC = () => {
             </View>
           ) : (
             <View style={styles.splitStudioContainer}>
-              {/* Left Pane: iPhone Controller App */}
               <View style={styles.splitPhoneColumn}>
                 {phoneTab === 'dashboard' ? (
                   <DashboardScreen onOpenRemote={() => setPhoneTab('remote')} />
@@ -168,7 +166,6 @@ const ParkCastShell: React.FC = () => {
                 )}
               </View>
 
-              {/* Right Pane: Live Car Head-Unit Display */}
               <View style={styles.splitCarColumn}>
                 <CarReceiverScreen />
               </View>
@@ -176,7 +173,6 @@ const ParkCastShell: React.FC = () => {
           )}
         </View>
 
-        {/* Global Subscription Paywall Modal */}
         <PaywallModal />
       </SafeAreaView>
     </SubscriptionProvider>
@@ -200,69 +196,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#050811',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-    gap: 8,
+    borderBottomColor: BRAND.colors.borderSubtle,
   },
   modeBarLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     gap: 6,
   },
-  modeBarLabel: {
-    color: '#64748B',
-    fontSize: 10,
-    fontWeight: '800',
-    marginRight: 4,
-  },
   modeChip: {
-    backgroundColor: '#0F172A',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#1E293B',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   modeChipActive: {
-    backgroundColor: '#1E3A8A',
-    borderColor: BRAND.colors.accentBlue,
+    backgroundColor: '#DBEAFE',
   },
   modeChipText: {
-    color: '#94A3B8',
-    fontSize: 11,
+    color: '#475569',
+    fontSize: 12,
     fontWeight: '700',
   },
   modeChipTextActive: {
-    color: '#FFFFFF',
+    color: '#1D4ED8',
   },
   phoneNavTabs: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   navTabBtn: {
-    backgroundColor: '#0F172A',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#1E293B',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   navTabBtnActive: {
-    backgroundColor: '#065F46',
-    borderColor: '#10B981',
+    backgroundColor: BRAND.colors.accentBlue,
   },
   navTabText: {
-    color: '#94A3B8',
-    fontSize: 11,
+    color: '#475569',
+    fontSize: 12,
     fontWeight: '700',
   },
   navTabTextActive: {
-    color: '#ECFDF5',
+    color: '#FFFFFF',
   },
   workspaceBody: {
     flex: 1,
@@ -273,21 +254,21 @@ const styles = StyleSheet.create({
   },
   singlePhonePane: {
     flex: 1,
-    maxWidth: 520,
+    maxWidth: 500,
     width: '100%',
     alignSelf: 'center',
   },
   splitStudioContainer: {
     flex: 1,
     flexDirection: 'row',
-    padding: 12,
-    gap: 14,
+    padding: 14,
+    gap: 16,
   },
   splitPhoneColumn: {
-    width: 440,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#1E293B',
+    width: 420,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: BRAND.colors.borderSubtle,
     overflow: 'hidden',
     backgroundColor: BRAND.colors.bgPrimary,
   },

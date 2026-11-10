@@ -16,10 +16,10 @@ interface PlayerRemoteScreenProps {
 }
 
 const QUALITIES: VideoQuality[] = ['480p', '720p', '1080p', '4K'];
-const ASPECTS: { id: AspectMode; label: string; pro?: boolean }[] = [
-  { id: 'fit', label: 'Standard Fit' },
-  { id: 'fill', label: 'Full-Bleed Fill', pro: true },
-  { id: 'cinema', label: 'Cinema 21:9 Zoom', pro: true },
+const ASPECTS: { id: AspectMode; label: string }[] = [
+  { id: 'fit', label: 'Normal Fit' },
+  { id: 'fill', label: 'Full Screen' },
+  { id: 'cinema', label: 'Widescreen' },
 ];
 
 export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
@@ -27,14 +27,12 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
 }) => {
   const {
     isPro,
-    remainingSessionSeconds,
     openPaywall,
     canUseQuality,
     canUseAspectMode,
   } = useSubscription();
 
   const {
-    carName,
     roomCode,
     activeMedia,
     isPlaying,
@@ -44,23 +42,18 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
     isMuted,
     quality,
     aspectMode,
-    steeringSide,
     mirrorMode,
     mirrorWebUrl,
-    cursorPos,
-    lastRemoteAction,
     togglePlayPause,
     seekBySeconds,
     setVolumeLevel,
     toggleMute,
     setQualityMode,
     setAspectRatioMode,
-    setSteeringSide,
     setMirrorMode,
     setMirrorWebUrl,
     moveCursor,
     triggerRemoteCommand,
-    openActiveMediaOnPhoneForAirPlay,
   } = useCastSession();
 
   const [mirrorUrlInput, setMirrorUrlInput] = useState(mirrorWebUrl || '');
@@ -73,9 +66,7 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
 
   const handleQualityPress = (q: VideoQuality) => {
     if (!canUseQuality(q)) {
-      openPaywall(
-        `${q} High-Definition Car Streaming requires ParkCast Pro. Free Starter plan streams at 480p SD.`
-      );
+      openPaywall(`Upgrade to ParkCast Pro to watch in ${q} High Definition.`);
       return;
     }
     setQualityMode(q);
@@ -83,9 +74,7 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
 
   const handleAspectPress = (mode: AspectMode) => {
     if (!canUseAspectMode(mode)) {
-      openPaywall(
-        `Full-Bleed Fill and Cinema 21:9 Zoom require ParkCast Pro so you can eliminate black bars on wide car displays.`
-      );
+      openPaywall('Upgrade to ParkCast Pro to expand videos to Full Screen and Widescreen.');
       return;
     }
     setAspectRatioMode(mode);
@@ -93,152 +82,138 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Top Bar */}
+      {/* Clean Top Bar */}
       <View style={styles.topBar}>
         <TouchableOpacity
           testID="remote-back-btn"
           style={styles.backBtn}
           onPress={onBackToDashboard}
         >
-          <Text style={styles.backBtnText}>← Sources</Text>
+          <Text style={styles.backBtnText}>← Home</Text>
         </TouchableOpacity>
-        <View style={styles.targetPill}>
-          <View style={styles.liveDot} />
-          <Text style={styles.targetPillText}>
-            {carName} (PIN {roomCode})
-          </Text>
+        <View style={styles.connectedPill}>
+          <View style={styles.greenDot} />
+          <Text style={styles.connectedText}>Car Screen ({roomCode})</Text>
         </View>
       </View>
 
-      {/* Now Casting Card */}
-      <View style={styles.nowPlayingCard}>
-        <View style={styles.nowPlayingHeader}>
-          <Text style={styles.nowPlayingBadge}>
-            {mirrorMode === 'screen_broadcast'
-              ? 'LIVE IPHONE SCREEN MIRROR'
-              : mirrorMode === 'photo_slideshow'
-              ? 'IPHONE PHOTO CAST'
-              : `NOW CASTING · ${quality}`}
-          </Text>
-          {!isPro && (
-            <TouchableOpacity onPress={() => openPaywall()}>
-              <Text style={styles.freeTimerWarning}>
-                Free Timer: {formatTime(remainingSessionSeconds)}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
+      {/* Main Player Card */}
+      <View style={styles.playerCard}>
+        <Text style={styles.nowPlayingTag}>
+          {mirrorMode === 'screen_broadcast'
+            ? 'MIRRORING TO CAR'
+            : mirrorMode === 'photo_slideshow'
+            ? 'SHOWING PHOTO ON CAR'
+            : 'PLAYING ON CAR SCREEN'}
+        </Text>
         <Text style={styles.mediaTitle}>
           {mirrorMode === 'screen_broadcast'
-            ? 'iPhone Home Screen & Apps Broadcast'
+            ? 'Live iPhone Screen Mirror'
+            : mirrorMode === 'photo_slideshow'
+            ? 'iPhone Photo'
             : activeMedia.title}
         </Text>
-        <Text style={styles.mediaSubtitle}>{activeMedia.subtitle}</Text>
+        <Text style={styles.mediaSub}>{activeMedia.subtitle}</Text>
 
-        <TouchableOpacity
-          style={styles.airplayLaunchBtn}
-          onPress={openActiveMediaOnPhoneForAirPlay}
-        >
-          <Text style={styles.airplayLaunchBtnText}>
-            ▶ Open Native iPhone Player / AirPlay to Car Audio & Screen
-          </Text>
-        </TouchableOpacity>
-
-        {/* Scrubber Bar */}
-        <View style={styles.scrubberSection}>
-          <View style={styles.scrubberTrack}>
-            <View
-              style={[
-                styles.scrubberFill,
-                {
-                  width: `${Math.min(
-                    100,
-                    Math.round((currentTimeSec / Math.max(1, durationSec)) * 100)
-                  )}%`,
-                },
-              ]}
-            />
-          </View>
-          <View style={styles.timeRow}>
-            <Text style={styles.timeText}>{formatTime(currentTimeSec)}</Text>
-            <Text style={styles.lastActionText} numberOfLines={1}>
-              {lastRemoteAction}
-            </Text>
-            <Text style={styles.timeText}>
-              {activeMedia.isLive ? 'LIVE' : formatTime(durationSec)}
-            </Text>
-          </View>
+        {/* Simple Progress Bar */}
+        <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: `${Math.min(
+                  100,
+                  Math.round((currentTimeSec / Math.max(1, durationSec)) * 100)
+                )}%`,
+              },
+            ]}
+          />
+        </View>
+        <View style={styles.timeRow}>
+          <Text style={styles.timeText}>{formatTime(currentTimeSec)}</Text>
+          <Text style={styles.timeText}>{formatTime(durationSec)}</Text>
         </View>
 
-        {/* Transport Controls */}
-        <View style={styles.transportRow}>
+        {/* Big Easy Playback Buttons */}
+        <View style={styles.playbackRow}>
           <TouchableOpacity
             testID="remote-rewind-btn"
-            style={styles.secondaryTransportBtn}
+            style={styles.skipBtn}
             onPress={() => seekBySeconds(-15)}
           >
-            <Text style={styles.secondaryTransportText}>-15s</Text>
+            <Text style={styles.skipBtnText}>⟲ 15s</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             testID="remote-play-pause-btn"
-            style={styles.primaryPlayBtn}
+            style={styles.bigPlayBtn}
             onPress={togglePlayPause}
           >
-            <Text style={styles.primaryPlayText}>{isPlaying ? 'PAUSE' : 'PLAY'}</Text>
+            <Text style={styles.bigPlayBtnText}>
+              {isPlaying ? 'Pause' : 'Play'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             testID="remote-forward-btn"
-            style={styles.secondaryTransportBtn}
+            style={styles.skipBtn}
             onPress={() => seekBySeconds(15)}
           >
-            <Text style={styles.secondaryTransportText}>+15s</Text>
+            <Text style={styles.skipBtnText}>15s ⟳</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Volume Bar */}
+        {/* Simple Volume Controls */}
         <View style={styles.volumeRow}>
-          <TouchableOpacity style={styles.muteBtn} onPress={toggleMute}>
-            <Text style={styles.muteBtnText}>{isMuted ? 'UNMUTE' : 'MUTE'}</Text>
+          <TouchableOpacity style={styles.volBtn} onPress={toggleMute}>
+            <Text style={styles.volBtnText}>{isMuted ? 'Unmute' : 'Mute'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.volStepBtn}
+            style={styles.volBtn}
             onPress={() => setVolumeLevel(volume - 10)}
           >
-            <Text style={styles.volStepText}>Vol -</Text>
+            <Text style={styles.volBtnText}>Quiet -</Text>
           </TouchableOpacity>
-          <View style={styles.volBarWrap}>
-            <View style={styles.volTrack}>
-              <View
-                style={[
-                  styles.volFill,
-                  { width: `${isMuted ? 0 : volume}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.volLabel}>
-              Car Audio: {isMuted ? 'Muted' : `${volume}%`}
-            </Text>
-          </View>
+          <Text style={styles.volValueText}>
+            Volume: {isMuted ? 'Muted' : `${volume}%`}
+          </Text>
           <TouchableOpacity
-            style={styles.volStepBtn}
+            style={styles.volBtn}
             onPress={() => setVolumeLevel(volume + 10)}
           >
-            <Text style={styles.volStepText}>Vol +</Text>
+            <Text style={styles.volBtnText}>Louder +</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Stream Resolution Selector (Free 480p vs Pro 1080p/4K) */}
-      <View style={styles.controlCard}>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardSectionTitle}>STREAM QUALITY</Text>
-          <Text style={styles.cardSectionHint}>
-            {isPro ? 'Pro HD/4K Unlocked' : '480p Free · 1080p/4K Pro'}
-          </Text>
+      {/* Screen Size & Video Quality */}
+      <View style={styles.settingCard}>
+        <Text style={styles.settingTitle}>Car Screen Size</Text>
+        <View style={styles.pillRow}>
+          {ASPECTS.map((item) => {
+            const unlocked = canUseAspectMode(item.id);
+            const active = aspectMode === item.id;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                testID={`aspect-btn-${item.id}`}
+                style={[styles.choicePill, active && styles.choicePillActive]}
+                onPress={() => handleAspectPress(item.id)}
+              >
+                <Text
+                  style={[
+                    styles.choicePillText,
+                    active && styles.choicePillTextActive,
+                  ]}
+                >
+                  {item.label} {!unlocked ? '🔒' : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
+
+        <Text style={[styles.settingTitle, { marginTop: 14 }]}>Video Quality</Text>
         <View style={styles.pillRow}>
           {QUALITIES.map((q) => {
             const unlocked = canUseQuality(q);
@@ -247,16 +222,13 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
               <TouchableOpacity
                 key={q}
                 testID={`quality-btn-${q}`}
-                style={[
-                  styles.optionPill,
-                  active && styles.optionPillActive,
-                ]}
+                style={[styles.choicePill, active && styles.choicePillActive]}
                 onPress={() => handleQualityPress(q)}
               >
                 <Text
                   style={[
-                    styles.optionPillText,
-                    active && styles.optionPillTextActive,
+                    styles.choicePillText,
+                    active && styles.choicePillTextActive,
                   ]}
                 >
                   {q} {!unlocked ? '🔒' : ''}
@@ -267,134 +239,80 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
         </View>
       </View>
 
-      {/* Car Screen Aspect Ratio & Driver Dock Side */}
-      <View style={styles.controlCard}>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardSectionTitle}>CAR DISPLAY SCALING & DOCK</Text>
-          <TouchableOpacity
-            onPress={() =>
-              setSteeringSide(steeringSide === 'left' ? 'right' : 'left')
-            }
-          >
-            <Text style={styles.dockToggleLink}>
-              Driver Dock: {steeringSide.toUpperCase()} ⇄
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.pillRow}>
-          {ASPECTS.map((item) => {
-            const unlocked = canUseAspectMode(item.id);
-            const active = aspectMode === item.id;
-            return (
-              <TouchableOpacity
-                key={item.id}
-                testID={`aspect-btn-${item.id}`}
-                style={[
-                  styles.optionPill,
-                  active && styles.optionPillActive,
-                ]}
-                onPress={() => handleAspectPress(item.id)}
-              >
-                <Text
-                  style={[
-                    styles.optionPillText,
-                    active && styles.optionPillTextActive,
-                  ]}
-                >
-                  {item.label} {!unlocked ? '🔒' : ''}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Interactive Car Touchpad & Rotary Knob Controller */}
-      <View style={styles.touchpadCard}>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardSectionTitle}>CAR SCREEN TOUCHPAD & ROTARY REMOTE</Text>
-          <Text style={styles.cardSectionHint}>
-            Cursor ({cursorPos.x}%, {cursorPos.y}%)
-          </Text>
-        </View>
-        <Text style={styles.touchpadDesc}>
-          Control web menus and video overlays on non-touch CarPlay displays right from your iPhone.
+      {/* Simple Car Screen Directional Pad */}
+      <View style={styles.settingCard}>
+        <Text style={styles.settingTitle}>Car Screen Pointer</Text>
+        <Text style={styles.settingSub}>
+          Move the pointer on your car screen and tap Select
         </Text>
-
-        <View style={styles.dpadGrid}>
+        <View style={styles.dpadWrap}>
           <TouchableOpacity
             style={styles.dpadBtn}
             onPress={() => moveCursor(0, -10)}
           >
-            <Text style={styles.dpadBtnText}>▲ Up</Text>
+            <Text style={styles.dpadText}>▲ Up</Text>
           </TouchableOpacity>
-          <View style={styles.dpadMidRow}>
+          <View style={styles.dpadMiddleRow}>
             <TouchableOpacity
               style={styles.dpadBtn}
               onPress={() => moveCursor(-12, 0)}
             >
-              <Text style={styles.dpadBtnText}>◀ Left</Text>
+              <Text style={styles.dpadText}>◀ Left</Text>
             </TouchableOpacity>
             <TouchableOpacity
               testID="remote-ok-select-btn"
-              style={styles.dpadCenterBtn}
-              onPress={() => triggerRemoteCommand('Click / Select on Car Screen')}
+              style={styles.dpadSelectBtn}
+              onPress={() => triggerRemoteCommand('Select on Car Screen')}
             >
-              <Text style={styles.dpadCenterText}>OK / TAP</Text>
+              <Text style={styles.dpadSelectText}>Select</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.dpadBtn}
               onPress={() => moveCursor(12, 0)}
             >
-              <Text style={styles.dpadBtnText}>Right ▶</Text>
+              <Text style={styles.dpadText}>Right ▶</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
             style={styles.dpadBtn}
             onPress={() => moveCursor(0, 10)}
           >
-            <Text style={styles.dpadBtnText}>▼ Down</Text>
+            <Text style={styles.dpadText}>▼ Down</Text>
           </TouchableOpacity>
         </View>
 
         {mirrorMode === 'screen_broadcast' && (
-          <View style={styles.mirrorControlBox}>
-            <Text style={styles.cardSectionTitle}>
-              LIVE MIRROR LAUNCHER (BEAMS TO CAR SCREEN)
-            </Text>
-            <Text style={styles.touchpadDesc}>
-              Tap an app or enter any URL / YouTube link to mirror it live onto your Car Screen Receiver:
-            </Text>
-            <View style={styles.mirrorAppShortcutRow}>
+          <View style={styles.mirrorBox}>
+            <Text style={styles.settingTitle}>Quick Mirror Shortcuts</Text>
+            <View style={styles.shortcutRow}>
               {[
-                { label: 'iPhone Home', url: null },
-                { label: 'YouTube 4K', url: 'https://www.youtube.com/watch?v=ysz5S6PUM-U' },
-                { label: 'Wikipedia', url: 'https://en.m.wikipedia.org/wiki/Mazda3' },
-                { label: 'OpenStreetMap', url: 'https://www.openstreetmap.org/export/embed.html' },
-              ].map((shortcut) => (
+                { label: 'Phone Home', url: null },
+                { label: 'YouTube', url: 'https://www.youtube.com/watch?v=ysz5S6PUM-U' },
+                { label: 'Mazda 3 Info', url: 'https://en.m.wikipedia.org/wiki/Mazda3' },
+              ].map((s) => (
                 <TouchableOpacity
-                  key={shortcut.label}
-                  style={styles.mirrorShortcutChip}
-                  onPress={() => setMirrorWebUrl(shortcut.url)}
+                  key={s.label}
+                  style={styles.shortcutBtn}
+                  onPress={() => setMirrorWebUrl(s.url)}
                 >
-                  <Text style={styles.mirrorShortcutText}>{shortcut.label}</Text>
+                  <Text style={styles.shortcutBtnText}>{s.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <View style={styles.mirrorUrlRow}>
+            <View style={styles.urlRow}>
               <TextInput
-                style={styles.mirrorUrlInput}
-                placeholder="Paste URL or YouTube link to mirror..."
-                placeholderTextColor={BRAND.colors.textMuted}
+                style={styles.urlInput}
+                placeholder="Type any website or YouTube link..."
+                placeholderTextColor="#94A3B8"
                 value={mirrorUrlInput}
                 onChangeText={setMirrorUrlInput}
                 autoCapitalize="none"
               />
               <TouchableOpacity
-                style={styles.mirrorUrlGoBtn}
+                style={styles.urlGoBtn}
                 onPress={() => setMirrorWebUrl(mirrorUrlInput)}
               >
-                <Text style={styles.mirrorUrlGoText}>Mirror</Text>
+                <Text style={styles.urlGoBtnText}>Show</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -405,9 +323,7 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
             style={styles.stopMirrorBtn}
             onPress={() => setMirrorMode('off')}
           >
-            <Text style={styles.stopMirrorBtnText}>
-              Exit Mirror Mode & Return to Video Player
-            </Text>
+            <Text style={styles.stopMirrorText}>Back to Normal Video Player</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -421,7 +337,7 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.colors.bgPrimary,
   },
   content: {
-    padding: 16,
+    padding: 18,
     paddingBottom: 36,
   },
   topBar: {
@@ -431,368 +347,273 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   backBtn: {
-    backgroundColor: BRAND.colors.bgCard,
-    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: BRAND.colors.borderSubtle,
   },
   backBtnText: {
     color: BRAND.colors.textPrimary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
-  targetPill: {
+  connectedPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#064E3B',
+    backgroundColor: '#DCFCE7',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
     gap: 6,
   },
-  liveDot: {
+  greenDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#34D399',
+    backgroundColor: '#16A34A',
   },
-  targetPillText: {
-    color: '#ECFDF5',
+  connectedText: {
+    color: '#166534',
     fontSize: 12,
     fontWeight: '700',
   },
-  nowPlayingCard: {
-    backgroundColor: BRAND.colors.bgCard,
-    borderRadius: 16,
-    padding: 16,
+  playerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: BRAND.colors.borderSubtle,
-    marginBottom: 14,
   },
-  nowPlayingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  nowPlayingBadge: {
-    color: BRAND.colors.accentCyan,
+  nowPlayingTag: {
+    color: BRAND.colors.accentBlue,
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.7,
-  },
-  freeTimerWarning: {
-    color: BRAND.colors.accentGold,
-    fontSize: 11,
-    fontWeight: '700',
+    letterSpacing: 0.6,
+    marginBottom: 4,
   },
   mediaTitle: {
     color: BRAND.colors.textPrimary,
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  mediaSubtitle: {
+  mediaSub: {
     color: BRAND.colors.textSecondary,
-    fontSize: 12,
-    marginBottom: 10,
-  },
-  airplayLaunchBtn: {
-    backgroundColor: '#1E3A8A',
-    borderWidth: 1,
-    borderColor: '#38BDF8',
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    alignItems: 'center',
+    fontSize: 13,
     marginBottom: 14,
   },
-  airplayLaunchBtnText: {
-    color: '#E0F2FE',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  scrubberSection: {
-    marginBottom: 16,
-  },
-  scrubberTrack: {
-    height: 7,
-    backgroundColor: BRAND.colors.bgPrimary,
+  progressTrack: {
+    height: 8,
+    backgroundColor: '#E2E8F0',
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 6,
   },
-  scrubberFill: {
+  progressFill: {
     height: '100%',
     backgroundColor: BRAND.colors.accentBlue,
   },
   timeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 16,
   },
   timeText: {
     color: BRAND.colors.textSecondary,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
-  lastActionText: {
-    color: '#38BDF8',
-    fontSize: 11,
-    maxWidth: '60%',
-  },
-  transportRow: {
+  playbackRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: 14,
     marginBottom: 16,
   },
-  secondaryTransportBtn: {
-    backgroundColor: BRAND.colors.bgSecondary,
+  skipBtn: {
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: BRAND.colors.borderSubtle,
-  },
-  secondaryTransportText: {
-    color: BRAND.colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  primaryPlayBtn: {
-    backgroundColor: BRAND.colors.accentBlue,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
     borderRadius: 14,
   },
-  primaryPlayText: {
+  skipBtnText: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  bigPlayBtn: {
+    backgroundColor: BRAND.colors.accentBlue,
+    paddingHorizontal: 36,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  bigPlayBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: 0.6,
   },
   volumeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#1E293B',
+    borderTopColor: '#F1F5F9',
   },
-  muteBtn: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 10,
+  volBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
   },
-  muteBtnText: {
-    color: '#E2E8F0',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  volStepBtn: {
-    backgroundColor: BRAND.colors.bgSecondary,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: BRAND.colors.borderSubtle,
-  },
-  volStepText: {
+  volBtnText: {
     color: BRAND.colors.textPrimary,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
-  volBarWrap: {
-    flex: 1,
-  },
-  volTrack: {
-    height: 6,
-    backgroundColor: BRAND.colors.bgPrimary,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
-  volFill: {
-    height: '100%',
-    backgroundColor: '#10B981',
-  },
-  volLabel: {
+  volValueText: {
     color: BRAND.colors.textSecondary,
-    fontSize: 10,
-    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '700',
   },
-  controlCard: {
-    backgroundColor: BRAND.colors.bgCard,
-    borderRadius: 14,
-    padding: 14,
+  settingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: BRAND.colors.borderSubtle,
-    marginBottom: 12,
   },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  cardSectionTitle: {
-    color: BRAND.colors.accentCyan,
-    fontSize: 11,
+  settingTitle: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 0.7,
+    marginBottom: 8,
   },
-  cardSectionHint: {
+  settingSub: {
     color: BRAND.colors.textSecondary,
-    fontSize: 11,
-  },
-  dockToggleLink: {
-    color: '#38BDF8',
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    marginBottom: 12,
   },
   pillRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
   },
-  optionPill: {
+  choicePill: {
     flex: 1,
-    minWidth: 70,
-    backgroundColor: BRAND.colors.bgSecondary,
+    backgroundColor: '#F1F5F9',
     paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#E2E8F0',
   },
-  optionPillActive: {
-    backgroundColor: '#1E3A8A',
+  choicePillActive: {
+    backgroundColor: '#DBEAFE',
     borderColor: BRAND.colors.accentBlue,
   },
-  optionPillText: {
+  choicePillText: {
     color: BRAND.colors.textSecondary,
     fontSize: 12,
     fontWeight: '700',
   },
-  optionPillTextActive: {
-    color: '#FFFFFF',
+  choicePillTextActive: {
+    color: '#1D4ED8',
   },
-  touchpadCard: {
-    backgroundColor: BRAND.colors.bgCard,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: BRAND.colors.borderSubtle,
-  },
-  touchpadDesc: {
-    color: BRAND.colors.textSecondary,
-    fontSize: 11,
-    marginBottom: 12,
-  },
-  dpadGrid: {
+  dpadWrap: {
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 6,
   },
-  dpadMidRow: {
+  dpadMiddleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
   dpadBtn: {
-    backgroundColor: BRAND.colors.bgSecondary,
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: BRAND.colors.borderSubtle,
     minWidth: 96,
     alignItems: 'center',
   },
-  dpadBtnText: {
+  dpadText: {
     color: BRAND.colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  dpadSelectBtn: {
+    backgroundColor: BRAND.colors.accentBlue,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  dpadSelectText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  mirrorBox: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  shortcutRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  shortcutBtn: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  shortcutBtnText: {
+    color: '#4338CA',
     fontSize: 12,
     fontWeight: '700',
   },
-  dpadCenterBtn: {
-    backgroundColor: BRAND.colors.accentBlue,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    borderRadius: 24,
+  urlRow: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  dpadCenterText: {
+  urlInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    color: BRAND.colors.textPrimary,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  urlGoBtn: {
+    backgroundColor: BRAND.colors.accentBlue,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  urlGoBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
   },
   stopMirrorBtn: {
     marginTop: 12,
-    backgroundColor: '#7F1D1D',
+    backgroundColor: '#FEE2E2',
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
   },
-  stopMirrorBtnText: {
-    color: '#FECACA',
-    fontSize: 12,
+  stopMirrorText: {
+    color: '#B91C1C',
+    fontSize: 13,
     fontWeight: '700',
-  },
-  mirrorControlBox: {
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-  },
-  mirrorAppShortcutRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 10,
-  },
-  mirrorShortcutChip: {
-    backgroundColor: '#1E3A8A',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#38BDF8',
-  },
-  mirrorShortcutText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  mirrorUrlRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  mirrorUrlInput: {
-    flex: 1,
-    backgroundColor: BRAND.colors.bgPrimary,
-    color: BRAND.colors.textPrimary,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 12,
-    borderWidth: 1,
-    borderColor: BRAND.colors.borderSubtle,
-  },
-  mirrorUrlGoBtn: {
-    backgroundColor: BRAND.colors.accentBlue,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 8,
-  },
-  mirrorUrlGoText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
   },
 });

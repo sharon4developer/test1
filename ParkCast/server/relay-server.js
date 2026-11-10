@@ -98,45 +98,45 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ParkCast Car Screen Receiver</title>
+  <title>ParkCast Car Screen</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: #05080F; color: #F8FAFC; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-    .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 18px; background: #0B1120; border-bottom: 1px solid #1E293B; }
+    body { background: #F4F6FB; color: #0F172A; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid #E2E8F0; }
     .status-group { display: flex; align-items: center; gap: 10px; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981; }
-    .pin-box { background: #1E3A8A; color: #fff; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 14px; letter-spacing: 1px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #10B981; }
+    .pin-box { background: #EFF6FF; color: #1D4ED8; font-weight: 800; padding: 5px 12px; border-radius: 8px; font-size: 13px; border: 1px solid #BFDBFE; }
     .badges { display: flex; gap: 8px; align-items: center; }
-    .badge { background: #1E293B; color: #38BDF8; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 800; }
-    .main { flex: 1; display: flex; position: relative; overflow: hidden; background: #030712; }
-    .dock { width: 72px; background: #0F172A; border-right: 1px solid #1E293B; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 14px 0; z-index: 5; }
-    .dock-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #fff; margin-bottom: 10px; cursor: pointer; }
-    .stage { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #030712; }
+    .badge { background: #F1F5F9; color: #334155; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+    .main { flex: 1; display: flex; position: relative; overflow: hidden; margin: 14px; border-radius: 22px; background: #0F172A; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); border: 1px solid #CBD5E1; }
+    .dock { width: 70px; background: #FFFFFF; border-right: 1px solid #E2E8F0; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 16px 0; z-index: 5; color: #0F172A; }
+    .dock-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #fff; margin-bottom: 10px; }
+    .stage { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #0F172A; }
     video, iframe, #photoViewer { width: 100%; height: 100%; border: none; background: #000; position: relative; z-index: 4; }
     #photoViewer { object-fit: contain; display: none; }
     .fit-contain { object-fit: contain; }
     .fit-cover { object-fit: cover; }
     .fit-cinema { object-fit: cover; transform: scale(1.12); }
-    .visualizer-fallback { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at 75% 20%, rgba(56,189,248,0.18), #050814 70%); z-index: 1; padding: 24px; text-align: center; }
-    .hud-top { position: absolute; top: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 17, 32, 0.86); padding: 10px 16px; border-radius: 12px; border-left: 4px solid #38BDF8; pointer-events: none; z-index: 10; }
-    .hud-title { font-size: 16px; font-weight: 800; color: #fff; }
-    .hud-sub { font-size: 11px; color: #38BDF8; font-weight: 700; text-transform: uppercase; }
-    .cursor { position: absolute; padding: 5px 9px; background: rgba(15, 23, 42, 0.92); border: 2px solid #38BDF8; border-radius: 14px; color: #E0F2FE; font-size: 10px; font-weight: 800; pointer-events: none; z-index: 30; transition: left 0.12s ease, top 0.12s ease; }
-    .mirror-overlay { position: absolute; inset: 0; background: #090D16; display: none; flex-direction: column; z-index: 20; }
-    .mirror-header { background: #111827; padding: 8px 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+    .visualizer-fallback { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); z-index: 1; padding: 24px; text-align: center; color: #0F172A; }
+    .hud-top { position: absolute; top: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.92); padding: 10px 16px; border-radius: 14px; border-left: 4px solid #2563EB; pointer-events: none; z-index: 10; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .hud-title { font-size: 16px; font-weight: 800; color: #0F172A; }
+    .hud-sub { font-size: 11px; color: #2563EB; font-weight: 800; text-transform: uppercase; }
+    .cursor { position: absolute; padding: 6px 10px; background: #2563EB; border: 2px solid #FFFFFF; border-radius: 14px; color: #FFFFFF; font-size: 11px; font-weight: 800; pointer-events: none; z-index: 30; transition: left 0.12s ease, top 0.12s ease; box-shadow: 0 4px 12px rgba(37,99,235,0.4); }
+    .mirror-overlay { position: absolute; inset: 0; background: #F8FAFC; display: none; flex-direction: column; z-index: 20; color: #0F172A; }
+    .mirror-header { background: #FFFFFF; padding: 10px 18px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
     .mirror-body { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-    .phone-frame { width: 360px; height: 92%; background: #0F172A; border: 3px solid #6366F1; border-radius: 32px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
+    .phone-frame { width: 360px; height: 90%; background: #FFFFFF; border: 3px solid #2563EB; border-radius: 30px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 16px 40px rgba(15,23,42,0.12); }
     .app-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
     .app-tile { padding: 16px 8px; border-radius: 14px; text-align: center; font-weight: 800; font-size: 11px; color: #fff; }
-    .bottom-bar { background: #0B1120; border-top: 1px solid #1E293B; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #94A3B8; z-index: 25; }
+    .bottom-bar { background: #FFFFFF; border-top: 1px solid #E2E8F0; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #475569; z-index: 25; }
   </style>
 </head>
 <body>
   <div class="top-bar">
     <div class="status-group">
       <div class="dot" id="connDot"></div>
-      <strong id="carTitle">PARKCAST CAR DISPLAY RECEIVER</strong>
-      <span class="pin-box" id="pinDisplay">PIN: 4829</span>
+      <strong id="carTitle" style="font-size:16px">ParkCast Car Display</strong>
+      <span class="pin-box" id="pinDisplay">Car Code: 4829</span>
     </div>
     <div class="badges">
       <span class="badge" id="qualityBadge">480p</span>
@@ -149,12 +149,12 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
     <div class="dock">
       <div style="text-align:center">
         <div style="font-weight:800;font-size:14px" id="clockText">12:45</div>
-        <div style="font-size:10px;color:#38BDF8;font-weight:700">5G · Wi-Fi</div>
+        <div style="font-size:10px;color:#2563EB;font-weight:700">CarPlay</div>
       </div>
       <div>
-        <div class="dock-icon" style="background:#3B82F6">P</div>
+        <div class="dock-icon" style="background:#2563EB">P</div>
         <div class="dock-icon" style="background:#10B981">NAV</div>
-        <div class="dock-icon" style="background:#F43F5E">YT</div>
+        <div class="dock-icon" style="background:#EF4444">YT</div>
       </div>
       <div style="width:28px;height:28px;border-radius:14px;border:2px solid #94A3B8"></div>
     </div>
@@ -162,17 +162,17 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
     <div class="stage">
       <div class="hud-top">
         <div>
-          <div class="hud-sub" id="hudCategory">READY FOR IPHONE CAST</div>
-          <div class="hud-title" id="hudTitle">Swiss Alps 4K Scenic Drive & Lounge</div>
+          <div class="hud-sub" id="hudCategory">NOW SHOWING</div>
+          <div class="hud-title" id="hudTitle">Swiss Alps Scenic Drive</div>
         </div>
-        <div class="badge" id="lastActionBadge">Connected · Ready</div>
+        <div class="badge" id="lastActionBadge">Connected to iPhone</div>
       </div>
 
       <div class="visualizer-fallback" id="visualizerFallback">
-        <div style="background:rgba(15,23,42,0.9);border:1px solid #334155;border-radius:18px;padding:24px 32px;max-width:480px">
-          <div style="color:#34D399;font-size:11px;font-weight:800;letter-spacing:1px;margin-bottom:8px">● PARKCAST CAR CINEMA STAGE</div>
-          <h2 style="font-size:20px;margin-bottom:6px" id="stageCenterTitle">Swiss Alps 4K Scenic Drive & Lounge</h2>
-          <p style="color:#94A3B8;font-size:13px" id="stageCenterSub">Select any channel, YouTube link, Camera Roll photo/video, or Screen Mirror on your iPhone.</p>
+        <div style="background:#FFFFFF;border:1px solid #DBEAFE;border-radius:22px;padding:28px 36px;max-width:480px;box-shadow:0 12px 30px rgba(37,99,235,0.08)">
+          <div style="color:#16A34A;font-size:12px;font-weight:800;letter-spacing:0.6px;margin-bottom:8px">● CONNECTED TO YOUR IPHONE</div>
+          <h2 style="font-size:22px;margin-bottom:8px;color:#0F172A" id="stageCenterTitle">Ready to Play</h2>
+          <p style="color:#475569;font-size:14px;line-height:1.5" id="stageCenterSub">Pick Watch YouTube, Phone Photos, Phone Videos, or Mirror Screen on your iPhone.</p>
         </div>
       </div>
 
@@ -182,44 +182,44 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
 
       <div class="mirror-overlay" id="mirrorOverlay">
         <div class="mirror-header">
-          <span style="color:#F43F5E;font-weight:800">● LIVE IPHONE SCREEN MIRRORING (60FPS)</span>
-          <span id="mirrorUrlLabel" style="color:#38BDF8;font-weight:700">iPhone Home & Web Mirror</span>
+          <span style="color:#7C3AED;font-weight:800">● LIVE IPHONE SCREEN MIRROR</span>
+          <span id="mirrorUrlLabel" style="color:#2563EB;font-weight:700">Mirroring iPhone</span>
         </div>
         <div class="mirror-body">
           <iframe id="mirrorWebFrame" style="display:none;width:100%;height:100%;border:none;background:#fff"></iframe>
           <div class="phone-frame" id="mirrorPhoneMock">
-            <div style="display:flex;justify-content:space-between;font-size:11px;color:#94A3B8;font-weight:700">
-              <span>iPhone · ParkCast Live</span>
-              <span style="color:#F43F5E">● REC</span>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#475569;font-weight:700">
+              <span>iPhone Live Mirror</span>
+              <span style="color:#EF4444">● LIVE</span>
             </div>
             <div>
-              <div style="font-size:16px;font-weight:800;margin-bottom:4px;text-align:center">Live iPhone Mirror Active</div>
-              <div style="font-size:11px;color:#94A3B8;text-align:center;margin-bottom:8px">Tap any app shortcut on your iPhone Remote screen</div>
+              <div style="font-size:17px;font-weight:800;margin-bottom:4px;text-align:center;color:#0F172A">Your iPhone Is Mirroring</div>
+              <div style="font-size:12px;color:#64748B;text-align:center;margin-bottom:10px">Tap any shortcut in the Car Remote tab on your iPhone</div>
               <div class="app-grid">
                 <div class="app-tile" style="background:#DC2626">YouTube</div>
-                <div class="app-tile" style="background:#2563EB">Safari Web</div>
-                <div class="app-tile" style="background:#059669">Photos HD</div>
-                <div class="app-tile" style="background:#EA580C">VLC / Files</div>
-                <div class="app-tile" style="background:#16A34A">Spotify</div>
-                <div class="app-tile" style="background:#4F46E5">Maps Live</div>
+                <div class="app-tile" style="background:#2563EB">Safari</div>
+                <div class="app-tile" style="background:#16A34A">Photos</div>
+                <div class="app-tile" style="background:#EA580C">Videos</div>
+                <div class="app-tile" style="background:#7C3AED">Music</div>
+                <div class="app-tile" style="background:#0284C7">Maps</div>
               </div>
             </div>
-            <div style="font-size:11px;color:#38BDF8;text-align:center;font-weight:700" id="mirrorLiveStatus">
-              Synced with iPhone Controller
+            <div style="font-size:12px;color:#2563EB;text-align:center;font-weight:700" id="mirrorLiveStatus">
+              Connected to iPhone
             </div>
           </div>
         </div>
       </div>
 
-      <div class="cursor" id="remoteCursor" style="left:68%;top:36%">● REMOTE</div>
+      <div class="cursor" id="remoteCursor" style="left:68%;top:36%">● Pointer</div>
     </div>
   </div>
 
   <div class="bottom-bar">
-    <div id="playStatusText">▶ Connected · Control playback, YouTube, Photos & Screen Mirror from your iPhone</div>
-    <button onclick="const v=document.getElementById('videoPlayer'); v.muted=false; v.play().catch(()=>{}); this.textContent='🔊 Car Audio Enabled';"
-      style="background:#3B82F6;color:#fff;border:none;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer">
-      🔊 Enable Car Audio
+    <div id="playStatusText">Connected · Choose any video or photo on your iPhone</div>
+    <button onclick="const v=document.getElementById('videoPlayer'); v.muted=false; v.play().catch(()=>{}); this.textContent='🔊 Sound On';"
+      style="background:#2563EB;color:#fff;border:none;padding:8px 16px;border-radius:10px;font-weight:700;cursor:pointer">
+      🔊 Turn Sound On
     </button>
   </div>
 

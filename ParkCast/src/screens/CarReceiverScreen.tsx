@@ -52,10 +52,7 @@ export const CarReceiverScreen: React.FC = () => {
     <View style={styles.carPlayDock}>
       <View style={styles.dockTopGroup}>
         <Text style={styles.dockClock}>12:45</Text>
-        <View style={styles.dockSignalRow}>
-          <Text style={styles.dockSignalText}>5G</Text>
-          <Text style={styles.dockWifiText}>Wi-Fi</Text>
-        </View>
+        <Text style={styles.dockSignalText}>CarPlay</Text>
       </View>
 
       <View style={styles.dockAppStack}>
@@ -65,8 +62,8 @@ export const CarReceiverScreen: React.FC = () => {
         <View style={[styles.dockAppIcon, { backgroundColor: '#10B981' }]}>
           <Text style={styles.dockAppIconLabel}>NAV</Text>
         </View>
-        <View style={[styles.dockAppIcon, { backgroundColor: '#F43F5E' }]}>
-          <Text style={styles.dockAppIconLabel}>MUS</Text>
+        <View style={[styles.dockAppIcon, { backgroundColor: '#EF4444' }]}>
+          <Text style={styles.dockAppIconLabel}>YT</Text>
         </View>
       </View>
 
@@ -78,7 +75,7 @@ export const CarReceiverScreen: React.FC = () => {
 
   return (
     <View style={styles.outerFrame}>
-      {/* Head-Unit Top Bezel Label */}
+      {/* Clean Light Header */}
       <View style={styles.bezelTopBar}>
         <View style={styles.bezelLeft}>
           <View
@@ -91,7 +88,7 @@ export const CarReceiverScreen: React.FC = () => {
             ]}
           />
           <Text style={styles.bezelTitle}>
-            CAR HEAD-UNIT DISPLAY · PIN {roomCode}
+            Car Screen Display · Code {roomCode}
           </Text>
         </View>
         <View style={styles.bezelBadges}>
@@ -110,16 +107,16 @@ export const CarReceiverScreen: React.FC = () => {
             <Text
               style={[
                 styles.bezelBadgeText,
-                isPro && { color: BRAND.colors.accentGold },
+                isPro && { color: '#B45309' },
               ]}
             >
-              {isPro ? 'PRO UNLIMITED' : `FREE ${formatTime(remainingSessionSeconds)}`}
+              {isPro ? '★ Pro' : `Free ${formatTime(remainingSessionSeconds)}`}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Main CarPlay Screen Surface */}
+      {/* Main CarPlay Screen Body */}
       <View
         style={[
           styles.carScreenBody,
@@ -128,87 +125,76 @@ export const CarReceiverScreen: React.FC = () => {
       >
         {dockColumn}
 
-        {/* Video / Mirror Stage */}
+        {/* Stage */}
         <View style={styles.stageArea}>
           {connectionTarget === 'disconnected' ? (
             <View style={styles.overlayCentered}>
-              <Text style={styles.standbyPinLabel}>PAIRING PIN: {roomCode}</Text>
-              <Text style={styles.standbyTitle}>Waiting for iPhone ParkCast Connection</Text>
+              <Text style={styles.standbyPinLabel}>CAR CODE: {roomCode}</Text>
+              <Text style={styles.standbyTitle}>Waiting for Your iPhone</Text>
               <Text style={styles.standbySub}>
-                Open ParkCast in Expo Go on your iPhone and enter PIN {roomCode} or choose AirPlay.
+                Open ParkCast on your iPhone and enter code {roomCode}.
               </Text>
             </View>
           ) : !isParkedConfirmed ? (
             <View style={styles.overlayCentered}>
-              <View style={styles.safetyBadge}>
-                <Text style={styles.safetyBadgeText}>SAFETY INTERLOCK ACTIVE</Text>
-              </View>
               <Text style={styles.standbyTitle}>
-                Video Hidden While Vehicle Is Moving
+                Video Paused While Driving
               </Text>
               <Text style={styles.standbySub}>
-                Audio continues through car speakers. Shift into Park to view video on the dashboard display.
+                Park your vehicle to watch video on the car screen.
               </Text>
               <TouchableOpacity
                 style={styles.confirmParkedBtn}
                 onPress={() => setParkedConfirmed(true)}
               >
                 <Text style={styles.confirmParkedBtnText}>
-                  Vehicle Is Parked · Resume Video
+                  Car Is Parked · Show Video
                 </Text>
               </TouchableOpacity>
             </View>
           ) : isSessionExpired ? (
             <View style={styles.overlayCentered}>
-              <View style={styles.expiredBadge}>
-                <Text style={styles.expiredBadgeText}>FREE 15-MIN SESSION ENDED</Text>
-              </View>
               <Text style={styles.standbyTitle}>
-                Upgrade to ParkCast Pro for Non-Stop Car Cinema
+                15-Minute Free Preview Ended
               </Text>
               <Text style={styles.standbySub}>
-                Unlock unlimited session length, 1080p/4K resolution, full iPhone screen mirroring, and custom M3U8 channels.
+                Upgrade to ParkCast Pro on your iPhone for unlimited watching.
               </Text>
               <View style={styles.expiredBtnRow}>
                 <TouchableOpacity
                   style={styles.upgradeFromCarBtn}
-                  onPress={() =>
-                    openPaywall(
-                      'Unlock Unlimited Car Cinema Streaming with ParkCast Pro.'
-                    )
-                  }
+                  onPress={() => openPaywall()}
                 >
                   <Text style={styles.upgradeFromCarBtnText}>
-                    Unlock ParkCast Pro on iPhone
+                    Upgrade to Pro
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.resetFreeDemoBtn}
                   onPress={resetFreeSessionTimer}
                 >
-                  <Text style={styles.resetFreeDemoText}>Reset 15m Demo</Text>
+                  <Text style={styles.resetFreeDemoText}>Restart 15m Demo</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : mirrorMode === 'screen_broadcast' ? (
-            /* Live iPhone Screen Mirroring Broadcast View */
             <View style={styles.mirrorContainer}>
               <View style={styles.mirrorPhoneMock}>
                 <View style={styles.mirrorPhoneStatus}>
-                  <Text style={styles.mirrorPhoneTime}>12:45 · ReplayKit Live</Text>
-                  <Text style={styles.mirrorPhoneRec}>● REC CAST</Text>
+                  <Text style={styles.mirrorPhoneTime}>iPhone Live Mirror</Text>
+                  <Text style={styles.mirrorPhoneRec}>● LIVE</Text>
                 </View>
                 <Text style={styles.mirrorPhoneHeading}>
-                  iPhone Live Screen Mirroring (60fps)
+                  Your iPhone Screen Is Mirroring
                 </Text>
                 <View style={styles.mirrorAppGrid}>
                   {[
                     { name: 'YouTube', color: '#DC2626' },
-                    { name: 'Safari Web', color: '#2563EB' },
-                    { name: 'Photos HD', color: '#059669' },
-                    { name: 'Files / VLC', color: '#EA580C' },
-                    { name: 'Spotify', color: '#16A34A' },
-                    { name: 'Maps Live', color: '#4F46E5' },
+                    { name: 'Safari', color: '#2563EB' },
+                    { name: 'Photos', color: '#16A34A' },
+                    { name: 'Videos', color: '#EA580C' },
+                    { name: 'Music', color: '#7C3AED' },
+                    { name: 'Maps', color: '#0284C7' },
                   ].map((app) => (
                     <View
                       key={app.name}
@@ -218,49 +204,30 @@ export const CarReceiverScreen: React.FC = () => {
                     </View>
                   ))}
                 </View>
-                <Text style={styles.mirrorDrmFootnote}>
-                  Non-DRM apps mirror in full HD with car audio.
-                </Text>
               </View>
             </View>
           ) : mirrorMode === 'photo_slideshow' && selectedPhotoUri ? (
-            /* Camera Roll Photo Cast View */
             <View style={styles.photoStage}>
               <Image
                 source={{ uri: selectedPhotoUri }}
                 style={styles.castedPhoto}
                 resizeMode="contain"
               />
-              <View style={styles.photoCaptionPill}>
-                <Text style={styles.photoCaptionText}>
-                  iPhone Camera Roll Photo Cast · {quality}
-                </Text>
-              </View>
             </View>
           ) : (
-            /* Video Stream Stage (Live Automotive Cinema Visualizer + HTML5/Expo-AV Video) */
             <View
               style={[
                 styles.videoViewport,
-                aspectMode === 'cinema' && { transform: [{ scale: 1.08 }] },
+                aspectMode === 'cinema' && { transform: [{ scale: 1.06 }] },
               ]}
             >
-              {/* Built-in Rich Cinema Stage Backdrop so playback is always vivid even offline */}
               <View
                 style={[
                   styles.cinemaVisualizerStage,
-                  { backgroundColor: activeMedia.thumbnailColor },
                   aspectMode === 'fit' && styles.cinemaVisualizerFit,
                 ]}
               >
-                <View style={styles.cinemaSkyGlow} />
-                <View style={styles.cinemaMountainRow}>
-                  <View style={styles.cinemaPeakLeft} />
-                  <View style={styles.cinemaPeakCenter} />
-                  <View style={styles.cinemaPeakRight} />
-                </View>
                 <View style={styles.cinemaRoadDeck}>
-                  <View style={styles.cinemaHorizonLine} />
                   <View style={styles.cinemaCenterPlayingCard}>
                     <View style={styles.cinemaLiveBadgeRow}>
                       <View
@@ -271,24 +238,23 @@ export const CarReceiverScreen: React.FC = () => {
                       />
                       <Text style={styles.cinemaLiveBadgeText}>
                         {isPlaying
-                          ? `PLAYING ON CAR SCREEN · ${quality} HD`
-                          : 'PAUSED ON CAR SCREEN'}
+                          ? `NOW PLAYING · ${quality}`
+                          : 'PAUSED'}
                       </Text>
                     </View>
                     <Text style={styles.cinemaStageMainTitle}>
                       {activeMedia.title}
                     </Text>
                     <Text style={styles.cinemaStageSub}>
-                      {activeMedia.subtitle} · Aspect: {aspectMode.toUpperCase()}
+                      {activeMedia.subtitle}
                     </Text>
 
-                    {/* Animated Progress / Audio Wave Bars */}
                     <View style={styles.waveBarContainer}>
-                      {[28, 46, 36, 58, 42, 64, 50, 32, 54, 40, 60, 34].map(
+                      {[24, 42, 32, 52, 38, 56, 44, 28, 48, 36].map(
                         (baseH, idx) => {
                           const dynamicH = isPlaying
-                            ? ((baseH + (currentTimeSec * 9 + idx * 7)) % 44) + 16
-                            : 14;
+                            ? ((baseH + (currentTimeSec * 9 + idx * 7)) % 38) + 14
+                            : 12;
                           return (
                             <View
                               key={idx}
@@ -297,7 +263,7 @@ export const CarReceiverScreen: React.FC = () => {
                                 {
                                   height: dynamicH,
                                   backgroundColor:
-                                    idx % 2 === 0 ? '#38BDF8' : '#34D399',
+                                    idx % 2 === 0 ? '#2563EB' : '#10B981',
                                 },
                               ]}
                             />
@@ -309,31 +275,22 @@ export const CarReceiverScreen: React.FC = () => {
                 </View>
               </View>
 
-              {/* Top HUD */}
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.videoTopGradientHud,
-                  { borderLeftColor: '#38BDF8' },
-                ]}
-              >
+              <View pointerEvents="none" style={styles.videoTopGradientHud}>
                 <View>
                   <Text style={styles.hudChannelCategory}>
-                    {activeMedia.category.toUpperCase()} STREAM · {quality} ·{' '}
-                    {aspectMode.toUpperCase()}
+                    NOW PLAYING · {quality}
                   </Text>
                   <Text style={styles.hudVideoTitle}>{activeMedia.title}</Text>
                 </View>
                 <View style={styles.hudAudioBadge}>
                   <Text style={styles.hudAudioText}>
-                    {isMuted ? 'MUTED' : `VOL ${volume}%`}
+                    {isMuted ? 'Muted' : `Vol ${volume}%`}
                   </Text>
                 </View>
               </View>
             </View>
           )}
 
-          {/* On-Screen Touchpad Cursor (Controlled by iPhone Remote) */}
           {connectionTarget !== 'disconnected' && isParkedConfirmed && (
             <View
               pointerEvents="none"
@@ -346,11 +303,10 @@ export const CarReceiverScreen: React.FC = () => {
               ]}
             >
               <View style={styles.remoteCursorInner} />
-              <Text style={styles.remoteCursorTag}>REMOTE</Text>
+              <Text style={styles.remoteCursorTag}>Pointer</Text>
             </View>
           )}
 
-          {/* Car Screen Bottom Transport Overlay Bar */}
           {connectionTarget !== 'disconnected' && isParkedConfirmed && !isSessionExpired && (
             <View style={styles.carBottomBar}>
               <View style={styles.carTransportLeft}>
@@ -365,7 +321,7 @@ export const CarReceiverScreen: React.FC = () => {
                   onPress={togglePlayPause}
                 >
                   <Text style={styles.carBarPlayText}>
-                    {isPlaying ? '❚❚ Pause' : '▶ Play'}
+                    {isPlaying ? 'Pause' : 'Play'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -381,8 +337,7 @@ export const CarReceiverScreen: React.FC = () => {
                   {lastRemoteAction}
                 </Text>
                 <Text style={styles.carTimecode}>
-                  {formatTime(currentTimeSec)} /{' '}
-                  {activeMedia.isLive ? 'LIVE' : formatTime(durationSec)}
+                  {formatTime(currentTimeSec)} / {formatTime(durationSec)}
                 </Text>
               </View>
 
@@ -399,7 +354,7 @@ export const CarReceiverScreen: React.FC = () => {
                 }
               >
                 <Text style={styles.carAspectBtnText}>
-                  Ratio: {aspectMode.toUpperCase()}
+                  Size: {aspectMode.toUpperCase()}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -413,10 +368,10 @@ export const CarReceiverScreen: React.FC = () => {
 const styles = StyleSheet.create({
   outerFrame: {
     flex: 1,
-    backgroundColor: '#05080F',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#1E293B',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     overflow: 'hidden',
     minHeight: 360,
   },
@@ -424,11 +379,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#0B1120',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#E2E8F0',
   },
   bezelLeft: {
     flexDirection: 'row',
@@ -436,76 +391,65 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bezelDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
   },
   bezelTitle: {
-    color: '#94A3B8',
-    fontSize: 11,
+    color: '#0F172A',
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 0.8,
   },
   bezelBadges: {
     flexDirection: 'row',
     gap: 6,
   },
   bezelBadge: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   bezelBadgePro: {
-    backgroundColor: '#F59E0B22',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: BRAND.colors.accentGold,
+    borderColor: '#F59E0B',
   },
   bezelBadgeFree: {
-    borderWidth: 1,
-    borderColor: '#38BDF8',
+    backgroundColor: '#EFF6FF',
   },
   bezelBadgeText: {
-    color: '#E2E8F0',
-    fontSize: 10,
-    fontWeight: '800',
+    color: '#334155',
+    fontSize: 11,
+    fontWeight: '700',
   },
   carScreenBody: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#000000',
+    backgroundColor: '#F8FAFC',
   },
   carPlayDock: {
     width: 68,
-    backgroundColor: '#0F172A',
-    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'space-between',
     borderRightWidth: 1,
-    borderLeftWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#E2E8F0',
   },
   dockTopGroup: {
     alignItems: 'center',
   },
   dockClock: {
-    color: '#F8FAFC',
+    color: '#0F172A',
     fontSize: 14,
     fontWeight: '800',
   },
-  dockSignalRow: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 2,
-  },
   dockSignalText: {
-    color: '#38BDF8',
-    fontSize: 9,
+    color: '#2563EB',
+    fontSize: 10,
     fontWeight: '700',
-  },
-  dockWifiText: {
-    color: '#94A3B8',
-    fontSize: 9,
+    marginTop: 2,
   },
   dockAppStack: {
     gap: 10,
@@ -514,7 +458,7 @@ const styles = StyleSheet.create({
   dockAppIcon: {
     width: 42,
     height: 42,
-    borderRadius: 11,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -524,9 +468,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   dockHomeCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: '#94A3B8',
     alignItems: 'center',
@@ -540,7 +484,7 @@ const styles = StyleSheet.create({
   },
   stageArea: {
     flex: 1,
-    backgroundColor: '#030712',
+    backgroundColor: '#EFF6FF',
     position: 'relative',
     justifyContent: 'space-between',
     overflow: 'hidden',
@@ -552,64 +496,35 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   standbyPinLabel: {
-    color: '#38BDF8',
-    fontSize: 16,
+    color: '#2563EB',
+    fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 1.5,
     marginBottom: 8,
   },
   standbyTitle: {
-    color: '#F8FAFC',
-    fontSize: 18,
+    color: '#0F172A',
+    fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 6,
   },
   standbySub: {
-    color: '#94A3B8',
-    fontSize: 12,
+    color: '#475569',
+    fontSize: 13,
     textAlign: 'center',
-    maxWidth: 420,
-    lineHeight: 18,
-  },
-  safetyBadge: {
-    backgroundColor: '#F59E0B22',
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 10,
-  },
-  safetyBadgeText: {
-    color: '#FBBF24',
-    fontSize: 11,
-    fontWeight: '800',
+    maxWidth: 400,
+    lineHeight: 19,
   },
   confirmParkedBtn: {
     marginTop: 14,
-    backgroundColor: '#059669',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 12,
   },
   confirmParkedBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  expiredBadge: {
-    backgroundColor: '#EF444422',
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 10,
-  },
-  expiredBadgeText: {
-    color: '#F87171',
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '800',
   },
   expiredBtnRow: {
@@ -618,25 +533,27 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   upgradeFromCarBtn: {
-    backgroundColor: BRAND.colors.accentGold,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: BRAND.colors.accentBlue,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 12,
   },
   upgradeFromCarBtnText: {
-    color: '#080C14',
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '800',
   },
   resetFreeDemoBtn: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
   },
   resetFreeDemoText: {
-    color: '#CBD5E1',
-    fontSize: 12,
+    color: '#334155',
+    fontSize: 13,
     fontWeight: '700',
   },
   mirrorContainer: {
@@ -644,35 +561,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    backgroundColor: '#090D16',
+    backgroundColor: '#F8FAFC',
   },
   mirrorPhoneMock: {
     width: '88%',
-    maxWidth: 420,
-    backgroundColor: '#111827',
-    borderRadius: 18,
-    padding: 16,
+    maxWidth: 400,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 18,
     borderWidth: 2,
-    borderColor: '#6366F1',
+    borderColor: '#2563EB',
   },
   mirrorPhoneStatus: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   mirrorPhoneTime: {
-    color: '#E2E8F0',
-    fontSize: 11,
+    color: '#475569',
+    fontSize: 12,
     fontWeight: '700',
   },
   mirrorPhoneRec: {
-    color: '#F43F5E',
-    fontSize: 11,
+    color: '#EF4444',
+    fontSize: 12,
     fontWeight: '800',
   },
   mirrorPhoneHeading: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    color: '#0F172A',
+    fontSize: 16,
     fontWeight: '800',
     marginBottom: 12,
   },
@@ -684,23 +601,17 @@ const styles = StyleSheet.create({
   mirrorAppTile: {
     width: '31%',
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
   },
   mirrorAppTileText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-  },
-  mirrorDrmFootnote: {
-    color: '#94A3B8',
-    fontSize: 10,
-    marginTop: 10,
-    textAlign: 'center',
   },
   photoStage: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#0F172A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -708,101 +619,37 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  photoCaptionPill: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: '#0F172ACC',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  photoCaptionText: {
-    color: '#F8FAFC',
-    fontSize: 11,
-    fontWeight: '700',
-  },
   videoViewport: {
     flex: 1,
-    backgroundColor: '#030712',
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
   },
   cinemaVisualizerStage: {
     flex: 1,
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cinemaVisualizerFit: {
-    marginVertical: 22,
-    marginHorizontal: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  cinemaSkyGlow: {
-    position: 'absolute',
-    top: -40,
-    right: -40,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(56, 189, 248, 0.16)',
-  },
-  cinemaMountainRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-around',
-    height: 110,
-    paddingTop: 40,
-    opacity: 0.35,
-  },
-  cinemaPeakLeft: {
-    width: 160,
-    height: 70,
-    backgroundColor: '#0F172A',
-    borderTopLeftRadius: 60,
-    borderTopRightRadius: 40,
-  },
-  cinemaPeakCenter: {
-    width: 220,
-    height: 95,
-    backgroundColor: '#1E293B',
-    borderTopLeftRadius: 80,
-    borderTopRightRadius: 80,
-  },
-  cinemaPeakRight: {
-    width: 170,
-    height: 65,
-    backgroundColor: '#0F172A',
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 60,
+    marginVertical: 20,
+    marginHorizontal: 16,
+    borderRadius: 20,
   },
   cinemaRoadDeck: {
     flex: 1,
-    backgroundColor: 'rgba(9, 13, 24, 0.78)',
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 18,
   },
-  cinemaHorizonLine: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#38BDF8',
-    opacity: 0.6,
-  },
   cinemaCenterPlayingCard: {
-    backgroundColor: 'rgba(15, 23, 42, 0.92)',
-    borderRadius: 18,
-    paddingVertical: 18,
-    paddingHorizontal: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    paddingVertical: 22,
+    paddingHorizontal: 28,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#DBEAFE',
     alignItems: 'center',
-    maxWidth: 460,
+    maxWidth: 440,
     width: '90%',
   },
   cinemaLiveBadgeRow: {
@@ -818,107 +665,103 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
   },
   cinemaLiveBadgeText: {
-    color: '#34D399',
+    color: '#16A34A',
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.8,
   },
   cinemaStageMainTitle: {
-    color: '#F8FAFC',
-    fontSize: 18,
+    color: '#0F172A',
+    fontSize: 19,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 4,
   },
   cinemaStageSub: {
-    color: '#94A3B8',
-    fontSize: 12,
+    color: '#475569',
+    fontSize: 13,
     textAlign: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   waveBarContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'center',
     gap: 6,
-    height: 64,
+    height: 56,
   },
   waveBar: {
     width: 8,
     borderRadius: 4,
   },
-  nativeVideo: {
-    width: '100%',
-    height: '100%',
-  },
   videoTopGradientHud: {
     position: 'absolute',
     top: 12,
-    left: 12,
-    right: 12,
-    backgroundColor: '#0B1120D9',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    left: 14,
+    right: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderLeftWidth: 4,
+    borderLeftColor: '#2563EB',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   hudChannelCategory: {
-    color: '#38BDF8',
+    color: '#2563EB',
     fontSize: 10,
     fontWeight: '800',
   },
   hudVideoTitle: {
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: 14,
     fontWeight: '800',
     marginTop: 1,
   },
   hudAudioBadge: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   hudAudioText: {
-    color: '#34D399',
-    fontSize: 10,
-    fontWeight: '800',
+    color: '#0F172A',
+    fontSize: 11,
+    fontWeight: '700',
   },
   remoteCursor: {
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#38BDF8',
-    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    borderColor: '#FFFFFF',
+    backgroundColor: '#2563EB',
   },
   remoteCursorInner: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#38BDF8',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
   },
   remoteCursorTag: {
-    color: '#E0F2FE',
-    fontSize: 8,
+    color: '#FFFFFF',
+    fontSize: 9,
     fontWeight: '800',
   },
   carBottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0B1120E6',
-    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#1E293B',
+    borderTopColor: '#E2E8F0',
     gap: 10,
   },
   carTransportLeft: {
@@ -927,23 +770,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   carBarBtn: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
   carBarBtnText: {
-    color: '#E2E8F0',
-    fontSize: 11,
+    color: '#0F172A',
+    fontSize: 12,
     fontWeight: '700',
   },
   carBarPlayBtn: {
     backgroundColor: BRAND.colors.accentBlue,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
   },
   carBarPlayText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
   },
   carTimelineMid: {
@@ -951,26 +794,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   carTimelineStatus: {
-    color: '#94A3B8',
-    fontSize: 10,
+    color: '#64748B',
+    fontSize: 11,
   },
   carTimecode: {
-    color: '#F8FAFC',
-    fontSize: 11,
+    color: '#0F172A',
+    fontSize: 12,
     fontWeight: '700',
     marginTop: 1,
   },
   carAspectBtn: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
   carAspectBtnText: {
-    color: '#38BDF8',
-    fontSize: 11,
-    fontWeight: '800',
+    color: '#2563EB',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
