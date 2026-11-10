@@ -5,9 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  Platform,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
 import { BRAND } from '../config/brand';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useCastSession } from '../context/CastSessionContext';
@@ -48,13 +46,6 @@ export const CarReceiverScreen: React.FC = () => {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  };
-
-  const getVideoResizeMode = (): ResizeMode => {
-    if (aspectMode === 'fill' || aspectMode === 'cinema') {
-      return ResizeMode.COVER;
-    }
-    return ResizeMode.CONTAIN;
   };
 
   const dockColumn = (
@@ -317,17 +308,6 @@ export const CarReceiverScreen: React.FC = () => {
                   </View>
                 </View>
               </View>
-
-              {Platform.OS !== 'web' && (
-                <Video
-                  source={{ uri: activeMedia.streamUrl }}
-                  shouldPlay={isPlaying}
-                  isMuted={isMuted}
-                  isLooping={true}
-                  resizeMode={getVideoResizeMode()}
-                  style={styles.nativeVideo}
-                />
-              )}
 
               {/* Top HUD */}
               <View
