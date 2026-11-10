@@ -30,7 +30,9 @@ let uxplayActive = false;
 function startWholePhoneAirPlayReceiver() {
   if (uxplayProcess) return;
   try {
-    const child = spawn('uxplay', ['-n', 'ParkCast Car Display', '-nh'], {
+    // Use -p so uxplay binds fixed ports (TCP 7000,7001,7100 and UDP 6000,6001,7011)
+    // instead of random dynamic ports that get blocked by Linux UFW firewall.
+    const child = spawn('uxplay', ['-n', 'ParkCast Car Display', '-nh', '-p'], {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     uxplayProcess = child;
@@ -40,6 +42,13 @@ function startWholePhoneAirPlayReceiver() {
       const line = String(data).trim();
       if (line) {
         console.log(`[AirPlay Full-Phone Mirror] ${line}`);
+      }
+    });
+
+    child.stderr.on('data', (data) => {
+      const line = String(data).trim();
+      if (line) {
+        console.log(`[AirPlay Mirror Notice] ${line}`);
       }
     });
 
