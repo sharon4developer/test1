@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import { BRAND, VideoQuality, AspectMode } from '../config/brand';
 import { useSubscription } from '../context/SubscriptionContext';
@@ -45,6 +46,7 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
     aspectMode,
     steeringSide,
     mirrorMode,
+    mirrorWebUrl,
     cursorPos,
     lastRemoteAction,
     togglePlayPause,
@@ -55,10 +57,13 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
     setAspectRatioMode,
     setSteeringSide,
     setMirrorMode,
+    setMirrorWebUrl,
     moveCursor,
     triggerRemoteCommand,
     openActiveMediaOnPhoneForAirPlay,
   } = useCastSession();
+
+  const [mirrorUrlInput, setMirrorUrlInput] = useState(mirrorWebUrl || '');
 
   const formatTime = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -351,6 +356,49 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
             <Text style={styles.dpadBtnText}>▼ Down</Text>
           </TouchableOpacity>
         </View>
+
+        {mirrorMode === 'screen_broadcast' && (
+          <View style={styles.mirrorControlBox}>
+            <Text style={styles.cardSectionTitle}>
+              LIVE MIRROR LAUNCHER (BEAMS TO CAR SCREEN)
+            </Text>
+            <Text style={styles.touchpadDesc}>
+              Tap an app or enter any URL / YouTube link to mirror it live onto your Car Screen Receiver:
+            </Text>
+            <View style={styles.mirrorAppShortcutRow}>
+              {[
+                { label: 'iPhone Home', url: null },
+                { label: 'YouTube 4K', url: 'https://www.youtube.com/watch?v=ysz5S6PUM-U' },
+                { label: 'Wikipedia', url: 'https://en.m.wikipedia.org/wiki/Mazda3' },
+                { label: 'OpenStreetMap', url: 'https://www.openstreetmap.org/export/embed.html' },
+              ].map((shortcut) => (
+                <TouchableOpacity
+                  key={shortcut.label}
+                  style={styles.mirrorShortcutChip}
+                  onPress={() => setMirrorWebUrl(shortcut.url)}
+                >
+                  <Text style={styles.mirrorShortcutText}>{shortcut.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.mirrorUrlRow}>
+              <TextInput
+                style={styles.mirrorUrlInput}
+                placeholder="Paste URL or YouTube link to mirror..."
+                placeholderTextColor={BRAND.colors.textMuted}
+                value={mirrorUrlInput}
+                onChangeText={setMirrorUrlInput}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.mirrorUrlGoBtn}
+                onPress={() => setMirrorWebUrl(mirrorUrlInput)}
+              >
+                <Text style={styles.mirrorUrlGoText}>Mirror</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {mirrorMode !== 'off' && (
           <TouchableOpacity
@@ -694,5 +742,57 @@ const styles = StyleSheet.create({
     color: '#FECACA',
     fontSize: 12,
     fontWeight: '700',
+  },
+  mirrorControlBox: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+  },
+  mirrorAppShortcutRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+  },
+  mirrorShortcutChip: {
+    backgroundColor: '#1E3A8A',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  mirrorShortcutText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  mirrorUrlRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  mirrorUrlInput: {
+    flex: 1,
+    backgroundColor: BRAND.colors.bgPrimary,
+    color: BRAND.colors.textPrimary,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+    borderWidth: 1,
+    borderColor: BRAND.colors.borderSubtle,
+  },
+  mirrorUrlGoBtn: {
+    backgroundColor: BRAND.colors.accentBlue,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
+  mirrorUrlGoText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

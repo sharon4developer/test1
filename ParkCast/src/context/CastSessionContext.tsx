@@ -35,6 +35,7 @@ export interface CastStatePayload {
   aspectMode: AspectMode;
   steeringSide: 'left' | 'right';
   mirrorMode: MirrorMode;
+  mirrorWebUrl: string | null;
   selectedPhotoUri: string | null;
   cursorPos: { x: number; y: number };
   lastRemoteAction: string;
@@ -53,7 +54,7 @@ export interface CastSessionContextValue extends CastStatePayload {
   selectMedia: (media: MediaPreset) => void;
   playCustomUrl: (title: string, url: string) => void;
   playYouTubeUrlOrQuery: (input: string) => void;
-  castLocalPhotoOrVideo: (uri: string, title: string, isVideo: boolean) => void;
+  castLocalPhotoOrVideo: (uri: string, title: string, isVideo: boolean, base64Data?: string) => Promise<void>;
   togglePlayPause: () => void;
   seekBySeconds: (deltaSec: number) => void;
   setVolumeLevel: (vol: number) => void;
@@ -62,6 +63,7 @@ export interface CastSessionContextValue extends CastStatePayload {
   setAspectRatioMode: (mode: AspectMode) => void;
   setSteeringSide: (side: 'left' | 'right') => void;
   setMirrorMode: (mode: MirrorMode) => void;
+  setMirrorWebUrl: (url: string | null) => void;
   moveCursor: (dx: number, dy: number) => void;
   triggerRemoteCommand: (label: string) => void;
   openActiveMediaOnPhoneForAirPlay: () => void;
@@ -82,7 +84,7 @@ function detectInitialRelayHost(): string {
       return `${ipPart}:${BRAND.defaultRelayPort}`;
     }
   }
-  return `127.0.0.1:${BRAND.defaultRelayPort}`;
+  return `10.0.0.87:${BRAND.defaultRelayPort}`;
 }
 
 const CastSessionContext = createContext<CastSessionContextValue | undefined>(undefined);
@@ -105,6 +107,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     aspectMode: 'fit',
     steeringSide: 'left',
     mirrorMode: 'off',
+    mirrorWebUrl: null,
     selectedPhotoUri: null,
     cursorPos: { x: 68, y: 36 },
     lastRemoteAction: 'Connected to Car Display (PIN 4829)',
@@ -359,37 +362,72 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }));
   }, []);
 
-  const castLocalPhotoOrVideo = useCallback((uri: string, title: string, isVideo: boolean) => {
-    if (isVideo) {
-      const localVideoPreset: MediaPreset = {
-        id: `local-${Date.now()}`,
-        title,
-        subtitle: 'iPhone Camera Roll Video',
-        category: 'local',
-        durationLabel: 'LOCAL HD',
-        thumbnailColor: '#1D4ED8',
-        streamUrl: uri,
-      };
-      setState((prev) => ({
-        ...prev,
-        activeMedia: localVideoPreset,
-        mirrorMode: 'off',
-        selectedPhotoUri: null,
-        isPlaying: true,
-        currentTimeSec: 0,
-        lastRemoteAction: `Casting camera roll video: ${title}`,
-        updatedAt: Date.now(),
-      }));
-    } else {
-      setState((prev) => ({
-        ...prev,
-        mirrorMode: 'photo_slideshow',
-        selectedPhotoUri: uri,
-        lastRemoteAction: `Displaying iPhone photo on car screen`,
-        updatedAt: Date.now(),
-      }));
-    }
-  }, []);
+  const castLocalPhotoOrVideo = useCallback(
+    async (uri: string, title: string, isVideo: boolean, base64Data?: string) => {
+      let broadcastUri = uri;
+
+      // If picked from iPhone Camera Roll with base64 data, upload to the laptop relay server
+      // so the Car Screen Receiver browser can render the actual photo/video over Wi-Fi
+      if (base64Data) {
+        const cleanHost = relayHost
+          .replace(/^ws:\/\//, '')
+          .replace(/^http:\/\//, '')
+          .trim();
+        const hostWithPort = cleanHost.includes(':')
+          ? cleanHost
+          : `${cleanHost}:${BRAND.defaultRelayPort}`;
+        try {
+          const resp = await fetch(`http://${hostWithPort}/upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
+              base64: base64Data,
+            }),
+          });
+          const json = await resp.json();
+          if (json && json.ok && json.url) {
+            broadcastUri = json.url;
+          } else {
+            broadcastUri = `data:${isVideo ? 'video/mp4' : 'image/jpeg'};base64,${base64Data}`;
+          }
+        } catch {
+          broadcastUri = `data:${isVideo ? 'video/mp4' : 'image/jpeg'};base64,${base64Data}`;
+        }
+      }
+
+      if (isVideo) {
+        const localVideoPreset: MediaPreset = {
+          id: `local-${Date.now()}`,
+          title,
+          subtitle: 'iPhone Camera Roll Video',
+          category: 'local',
+          durationLabel: 'LOCAL HD',
+          thumbnailColor: '#1D4ED8',
+          streamUrl: broadcastUri,
+        };
+        setState((prev) => ({
+          ...prev,
+          activeMedia: localVideoPreset,
+          mirrorMode: 'off',
+          selectedPhotoUri: null,
+          isPlaying: true,
+          currentTimeSec: 0,
+          lastRemoteAction: `Casting camera roll video: ${title}`,
+          updatedAt: Date.now(),
+        }));
+      } else {
+        setState((prev) => ({
+          ...prev,
+          mirrorMode: 'photo_slideshow',
+          selectedPhotoUri: broadcastUri,
+          lastRemoteAction: `Displaying iPhone photo on car screen`,
+          updatedAt: Date.now(),
+        }));
+      }
+    },
+    [relayHost]
+  );
 
   const togglePlayPause = useCallback(() => {
     setState((prev) => ({
@@ -473,6 +511,21 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }));
   }, []);
 
+  const setMirrorWebUrl = useCallback((url: string | null) => {
+    const clean = url ? url.trim() : null;
+    const normalized =
+      clean && !/^https?:\/\//i.test(clean) ? `https://${clean}` : clean;
+    setState((prev) => ({
+      ...prev,
+      mirrorMode: 'screen_broadcast',
+      mirrorWebUrl: normalized,
+      lastRemoteAction: normalized
+        ? `Mirroring live view: ${normalized}`
+        : 'Mirroring iPhone Home Screen',
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
   const moveCursor = useCallback((dx: number, dy: number) => {
     setState((prev) => {
       const nextX = Math.max(8, Math.min(92, Math.round(prev.cursorPos.x + dx)));
@@ -527,6 +580,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setAspectRatioMode,
         setSteeringSide,
         setMirrorMode,
+        setMirrorWebUrl,
         moveCursor,
         triggerRemoteCommand,
         openActiveMediaOnPhoneForAirPlay,

@@ -95,15 +95,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: asVideo ? ['videos'] : ['images'],
-        quality: 0.9,
+        quality: 0.7,
+        base64: !asVideo,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        castLocalPhotoOrVideo(
+        await castLocalPhotoOrVideo(
           asset.uri,
           asset.fileName || (asVideo ? 'Camera Roll Video.mp4' : 'iPhone Photo'),
-          asVideo
+          asVideo,
+          asset.base64 || undefined
         );
         onOpenRemote();
         return;

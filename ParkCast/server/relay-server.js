@@ -2,10 +2,10 @@
 /**
  * ParkCast Realtime Pairing Relay & Standalone Car Screen Receiver Server
  *
- * - WebSocket Relay on ws://<LAN_IP>:4848
+ * - WebSocket Relay on ws://<LAN_IP>:4848 (supports large base64 photo/frame payloads)
+ * - HTTP Media Upload endpoint on POST http://<LAN_IP>:4848/upload
+ *   (Lets the iPhone upload real Camera Roll photos/videos over Wi-Fi to display on /car)
  * - Standalone Car Cinema Receiver Web Player on http://<LAN_IP>:4848/car
- *   (Open this URL in any car browser, tablet, or laptop to receive live YouTube,
- *    MP4/M3U8 video, and touchpad remote commands from your iPhone running Expo Go!)
  */
 
 const http = require('http');
@@ -14,6 +14,7 @@ const { WebSocketServer } = require('ws');
 
 const PORT = Number(process.env.PARKCAST_RELAY_PORT || 4848);
 const rooms = new Map();
+const uploadedMedia = new Map(); // id -> { mimeType, buffer }
 
 function getLocalLanIp() {
   const interfaces = os.networkInterfaces();
@@ -32,7 +33,7 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ParkCast Car Screen Receiver</title>
+  <title>ParkCast Car Screen Receiver (Mazda 3 GT 10.25" Widescreen Ready)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: #05080F; color: #F8FAFC; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -42,20 +43,27 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
     .pin-box { background: #1E3A8A; color: #fff; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 14px; letter-spacing: 1px; }
     .badges { display: flex; gap: 8px; align-items: center; }
     .badge { background: #1E293B; color: #38BDF8; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 800; }
-    .main { flex: 1; display: flex; position: relative; overflow: hidden; background: #000; }
+    .main { flex: 1; display: flex; position: relative; overflow: hidden; background: #030712; }
     .dock { width: 72px; background: #0F172A; border-right: 1px solid #1E293B; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 14px 0; z-index: 5; }
-    .dock-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #fff; margin-bottom: 10px; }
-    .stage { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
-    video, iframe { width: 100%; height: 100%; border: none; background: #000; }
+    .dock-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #fff; margin-bottom: 10px; cursor: pointer; }
+    .stage { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #030712; }
+    video, iframe, #photoViewer { width: 100%; height: 100%; border: none; background: #000; position: relative; z-index: 4; }
+    #photoViewer { object-fit: contain; display: none; }
     .fit-contain { object-fit: contain; }
     .fit-cover { object-fit: cover; }
     .fit-cinema { object-fit: cover; transform: scale(1.12); }
-    .hud-top { position: absolute; top: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 17, 32, 0.82); padding: 10px 16px; border-radius: 12px; border-left: 4px solid #38BDF8; pointer-events: none; z-index: 10; }
+    .visualizer-fallback { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at 75% 20%, rgba(56,189,248,0.18), #050814 70%); z-index: 1; padding: 24px; text-align: center; }
+    .hud-top { position: absolute; top: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 17, 32, 0.86); padding: 10px 16px; border-radius: 12px; border-left: 4px solid #38BDF8; pointer-events: none; z-index: 10; }
     .hud-title { font-size: 16px; font-weight: 800; color: #fff; }
     .hud-sub { font-size: 11px; color: #38BDF8; font-weight: 700; text-transform: uppercase; }
-    .cursor { position: absolute; padding: 5px 9px; background: rgba(15, 23, 42, 0.9); border: 2px solid #38BDF8; border-radius: 14px; color: #E0F2FE; font-size: 10px; font-weight: 800; pointer-events: none; z-index: 20; transition: left 0.12s ease, top 0.12s ease; }
-    .mirror-overlay { position: absolute; inset: 0; background: #090D16; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 15; padding: 24px; text-align: center; }
-    .bottom-bar { background: #0B1120; border-top: 1px solid #1E293B; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #94A3B8; }
+    .cursor { position: absolute; padding: 5px 9px; background: rgba(15, 23, 42, 0.92); border: 2px solid #38BDF8; border-radius: 14px; color: #E0F2FE; font-size: 10px; font-weight: 800; pointer-events: none; z-index: 30; transition: left 0.12s ease, top 0.12s ease; }
+    .mirror-overlay { position: absolute; inset: 0; background: #090D16; display: none; flex-direction: column; z-index: 20; }
+    .mirror-header { background: #111827; padding: 8px 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+    .mirror-body { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+    .phone-frame { width: 360px; height: 92%; background: #0F172A; border: 3px solid #6366F1; border-radius: 32px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 20px 50px rgba(0,0,0,0.7); }
+    .app-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+    .app-tile { padding: 16px 8px; border-radius: 14px; text-align: center; font-weight: 800; font-size: 11px; color: #fff; }
+    .bottom-bar { background: #0B1120; border-top: 1px solid #1E293B; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #94A3B8; z-index: 25; }
   </style>
 </head>
 <body>
@@ -92,19 +100,51 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
           <div class="hud-sub" id="hudCategory">READY FOR IPHONE CAST</div>
           <div class="hud-title" id="hudTitle">Swiss Alps 4K Scenic Drive & Lounge</div>
         </div>
-        <div class="badge" id="lastActionBadge">Waiting for iPhone controller...</div>
+        <div class="badge" id="lastActionBadge">Connected · Ready</div>
       </div>
 
-      <video id="videoPlayer" playsinline autoplay muted loop class="fit-contain"
-        src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"></video>
+      <!-- Ambient Visualizer Backdrop (always visible behind or when loading) -->
+      <div class="visualizer-fallback" id="visualizerFallback">
+        <div style="background:rgba(15,23,42,0.9);border:1px solid #334155;border-radius:18px;padding:24px 32px;max-width:480px">
+          <div style="color:#34D399;font-size:11px;font-weight:800;letter-spacing:1px;margin-bottom:8px">● PARKCAST CAR CINEMA STAGE</div>
+          <h2 style="font-size:20px;margin-bottom:6px" id="stageCenterTitle">Swiss Alps 4K Scenic Drive & Lounge</h2>
+          <p style="color:#94A3B8;font-size:13px" id="stageCenterSub">Select any channel, YouTube link, Camera Roll photo, or Screen Mirror on your iPhone.</p>
+        </div>
+      </div>
 
+      <video id="videoPlayer" playsinline autoplay muted loop class="fit-contain" style="display:none"></video>
       <iframe id="ytFrame" style="display:none" allow="autoplay; encrypted-media; fullscreen"></iframe>
+      <img id="photoViewer" alt="Casted iPhone Photo" />
 
+      <!-- Live iPhone Screen Mirroring Stage -->
       <div class="mirror-overlay" id="mirrorOverlay">
-        <div style="background:#111827;border:2px solid #6366F1;border-radius:20px;padding:24px;max-width:480px;width:100%">
-          <div style="color:#F43F5E;font-weight:800;font-size:12px;margin-bottom:6px">● LIVE IPHONE SCREEN BROADCAST (60FPS)</div>
-          <h2 style="font-size:20px;margin-bottom:14px" id="mirrorTitle">iPhone Screen Mirror Active</h2>
-          <p style="color:#94A3B8;font-size:13px;line-height:1.5">Controlled live from your iPhone ParkCast app.</p>
+        <div class="mirror-header">
+          <span style="color:#F43F5E;font-weight:800">● LIVE IPHONE SCREEN MIRRORING (60FPS)</span>
+          <span id="mirrorUrlLabel" style="color:#38BDF8;font-weight:700">iPhone Home & Web Mirror</span>
+        </div>
+        <div class="mirror-body">
+          <iframe id="mirrorWebFrame" style="display:none;width:100%;height:100%;border:none;background:#fff"></iframe>
+          <div class="phone-frame" id="mirrorPhoneMock">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#94A3B8;font-weight:700">
+              <span>iPhone 16 Pro · ParkCast</span>
+              <span style="color:#F43F5E">● REC</span>
+            </div>
+            <div>
+              <div style="font-size:16px;font-weight:800;margin-bottom:4px;text-align:center">Live iPhone Mirror Active</div>
+              <div style="font-size:11px;color:#94A3B8;text-align:center;margin-bottom:8px">Tap any app or enter a URL on your iPhone Mirror controller</div>
+              <div class="app-grid">
+                <div class="app-tile" style="background:#DC2626">YouTube</div>
+                <div class="app-tile" style="background:#2563EB">Safari Web</div>
+                <div class="app-tile" style="background:#059669">Photos HD</div>
+                <div class="app-tile" style="background:#EA580C">VLC / Files</div>
+                <div class="app-tile" style="background:#16A34A">Spotify</div>
+                <div class="app-tile" style="background:#4F46E5">Maps Live</div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:#38BDF8;text-align:center;font-weight:700" id="mirrorLiveStatus">
+              Synced with iPhone Controller
+            </div>
+          </div>
         </div>
       </div>
 
@@ -113,8 +153,8 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
   </div>
 
   <div class="bottom-bar">
-    <div id="playStatusText">▶ Playing · Tap Unmute if your browser blocks autoplay sound</div>
-    <button onclick="const v=document.getElementById('videoPlayer'); v.muted=false; v.play(); this.textContent='🔊 Car Audio Enabled';"
+    <div id="playStatusText">▶ Connected · Control playback, YouTube, Photos & Screen Mirror from your iPhone</div>
+    <button onclick="const v=document.getElementById('videoPlayer'); v.muted=false; v.play().catch(()=>{}); this.textContent='🔊 Car Audio Enabled';"
       style="background:#3B82F6;color:#fff;border:none;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer">
       🔊 Enable Car Audio
     </button>
@@ -127,9 +167,13 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
 
     const videoEl = document.getElementById('videoPlayer');
     const ytFrame = document.getElementById('ytFrame');
+    const photoViewer = document.getElementById('photoViewer');
     const mirrorOverlay = document.getElementById('mirrorOverlay');
+    const mirrorWebFrame = document.getElementById('mirrorWebFrame');
+    const mirrorPhoneMock = document.getElementById('mirrorPhoneMock');
     let currentMediaUrl = '';
     let currentYtId = '';
+    let currentMirrorUrl = '';
 
     function extractYouTubeId(urlOrId) {
       if (!urlOrId) return null;
@@ -170,29 +214,69 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
               document.getElementById('mainRow').style.flexDirection = 'row';
             }
 
+            // 1. Check Photo Cast Mode
+            if (s.mirrorMode === 'photo_slideshow' && s.selectedPhotoUri) {
+              mirrorOverlay.style.display = 'none';
+              videoEl.pause();
+              videoEl.style.display = 'none';
+              ytFrame.style.display = 'none';
+              photoViewer.style.display = 'block';
+              photoViewer.src = s.selectedPhotoUri;
+              document.getElementById('hudTitle').textContent = 'iPhone Camera Roll Photo Cast';
+              document.getElementById('hudCategory').textContent = 'LIVE PHOTO MIRROR · ' + (s.quality || '1080p');
+              return;
+            } else {
+              photoViewer.style.display = 'none';
+            }
+
+            // 2. Check Live Screen Mirror Mode
             if (s.mirrorMode === 'screen_broadcast') {
               mirrorOverlay.style.display = 'flex';
+              videoEl.pause();
+              document.getElementById('mirrorLiveStatus').textContent = s.lastRemoteAction || 'Live Mirroring from iPhone';
+              if (s.mirrorWebUrl) {
+                document.getElementById('mirrorUrlLabel').textContent = s.mirrorWebUrl;
+                const ytMirrorId = extractYouTubeId(s.mirrorWebUrl);
+                const targetEmbed = ytMirrorId
+                  ? ('https://www.youtube.com/embed/' + ytMirrorId + '?autoplay=1&rel=0')
+                  : s.mirrorWebUrl;
+                mirrorPhoneMock.style.display = 'none';
+                mirrorWebFrame.style.display = 'block';
+                if (currentMirrorUrl !== targetEmbed) {
+                  currentMirrorUrl = targetEmbed;
+                  mirrorWebFrame.src = targetEmbed;
+                }
+              } else {
+                mirrorWebFrame.style.display = 'none';
+                mirrorPhoneMock.style.display = 'flex';
+              }
+              return;
             } else {
               mirrorOverlay.style.display = 'none';
             }
 
+            // 3. Standard Video / YouTube Stream Mode
             if (s.activeMedia) {
               document.getElementById('hudTitle').textContent = s.activeMedia.title;
+              document.getElementById('stageCenterTitle').textContent = s.activeMedia.title;
               document.getElementById('hudCategory').textContent =
                 (s.activeMedia.category || 'stream').toUpperCase() + ' · ' + (s.quality || '480p');
 
               const ytId = extractYouTubeId(s.activeMedia.youtubeId || s.activeMedia.streamUrl);
-              const isDirectMp4 = String(s.activeMedia.streamUrl || '').endsWith('.mp4');
+              const isDirectVideo = /\\.(mp4|m3u8|mov|webm)(\\?|$)/i.test(String(s.activeMedia.streamUrl || '')) ||
+                String(s.activeMedia.streamUrl || '').startsWith('http://') ||
+                String(s.activeMedia.streamUrl || '').startsWith('data:');
 
-              if (ytId && !isDirectMp4) {
+              if (ytId) {
                 videoEl.pause();
                 videoEl.style.display = 'none';
                 ytFrame.style.display = 'block';
                 if (currentYtId !== ytId) {
                   currentYtId = ytId;
-                  ytFrame.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&rel=0&playsinline=1';
+                  ytFrame.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&mute=1&rel=0&playsinline=1';
                 }
-              } else if (s.activeMedia.streamUrl) {
+                document.getElementById('playStatusText').textContent = '▶ Playing YouTube on Car Screen: ' + s.activeMedia.title;
+              } else if (isDirectVideo && s.activeMedia.streamUrl) {
                 ytFrame.style.display = 'none';
                 ytFrame.src = '';
                 currentYtId = '';
@@ -231,6 +315,59 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
 
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // Serve uploaded photos/videos from iPhone Camera Roll
+  if (req.url && req.url.startsWith('/media/')) {
+    const id = req.url.replace('/media/', '').split('?')[0];
+    const item = uploadedMedia.get(id);
+    if (!item) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+    res.setHeader('Content-Type', item.mimeType);
+    res.writeHead(200);
+    res.end(item.buffer);
+    return;
+  }
+
+  // Receive base64 photo/video upload from iPhone Expo Go
+  if (req.method === 'POST' && req.url === '/upload') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > 35 * 1024 * 1024) {
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const mimeType = data.mimeType || 'image/jpeg';
+        const base64Clean = String(data.base64 || '').replace(/^data:[^;]+;base64,/, '');
+        const buffer = Buffer.from(base64Clean, 'base64');
+        const id = `media-${Date.now()}`;
+        uploadedMedia.set(id, { mimeType, buffer });
+        const lanIp = getLocalLanIp();
+        const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+        res.setHeader('Content-Type', 'application/json');
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: true, url: publicUrl }));
+      } catch (err) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ ok: false, error: String(err) }));
+      }
+    });
+    return;
+  }
 
   if (req.url && (req.url === '/car' || req.url.startsWith('/car?'))) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -265,7 +402,7 @@ const server = http.createServer((req, res) => {
   );
 });
 
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: 35 * 1024 * 1024 });
 
 wss.on('connection', (ws) => {
   let currentRoom = '4829';
