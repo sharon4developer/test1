@@ -97,6 +97,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
         mediaTypes: asVideo ? ['videos'] : ['images'],
         quality: 0.7,
         base64: !asVideo,
+        videoExportPreset: ImagePicker.VideoExportPreset.MediumQuality,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {

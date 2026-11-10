@@ -2,21 +2,28 @@
 /**
  * ParkCast Realtime Pairing Relay & Standalone Car Screen Receiver Server
  *
- * Supports BOTH:
- * 1. WebSocket (`ws://<HOST>:4848`)
- * 2. Instant HTTP Poll/Push (`POST /sync` & `GET /sync?pin=4829`) so iPhones in Expo Go
- *    never fail if iOS blocks raw WebSockets.
- * 3. Camera Roll Photo/Video upload (`POST /upload`)
- * 4. Standalone Car Cinema Receiver Web Player (`http://<HOST>:4848/car`)
+ * Features:
+ * 1. WebSocket (`ws://<HOST>:4848`) + HTTP `/sync` fallback
+ * 2. iPhone Camera Roll Photo & Video upload (`POST /upload` & `POST /upload-file`)
+ *    with automatic ffmpeg H.264 MP4 transcoding for iPhone `.mov` (HEVC) clips
+ *    and HTTP 206 Byte-Range streaming so Linux Chrome plays iPhone videos smoothly!
+ * 3. Standalone Car Cinema Receiver Web Player (`http://<HOST>:4848/car`)
  */
 
 const http = require('http');
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
+const { execFile } = require('child_process');
 const { WebSocketServer } = require('ws');
 
 const PORT = Number(process.env.PARKCAST_RELAY_PORT || 4848);
-const rooms = new Map(); // roomCode -> { clients: Set<WebSocket>, lastState: object | null }
-const uploadedMedia = new Map(); // id -> { mimeType, buffer }
+const rooms = new Map();
+const MEDIA_DIR = path.join(os.tmpdir(), 'parkcast-media');
+fs.mkdirSync(MEDIA_DIR, { recursive: true });
+
+// Map of mediaId -> { filePath, mimeType }
+const uploadedMedia = new Map();
 
 function getLocalLanIp() {
   const interfaces = os.networkInterfaces();
@@ -53,6 +60,37 @@ function broadcastRoomState(code, payload, senderWs = null) {
       client.send(message);
     }
   }
+}
+
+function transcodeToBrowserMp4IfNeeded(inputPath, callback) {
+  const outputPath = `${inputPath}-h264.mp4`;
+  execFile(
+    'ffmpeg',
+    [
+      '-y',
+      '-i',
+      inputPath,
+      '-c:v',
+      'libx264',
+      '-preset',
+      'ultrafast',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      '-c:a',
+      'aac',
+      outputPath,
+    ],
+    { timeout: 60000 },
+    (err) => {
+      if (!err && fs.existsSync(outputPath)) {
+        callback(outputPath, 'video/mp4');
+      } else {
+        callback(inputPath, 'video/mp4');
+      }
+    }
+  );
 }
 
 const CAR_RECEIVER_HTML = `<!DOCTYPE html>
@@ -134,11 +172,11 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
         <div style="background:rgba(15,23,42,0.9);border:1px solid #334155;border-radius:18px;padding:24px 32px;max-width:480px">
           <div style="color:#34D399;font-size:11px;font-weight:800;letter-spacing:1px;margin-bottom:8px">● PARKCAST CAR CINEMA STAGE</div>
           <h2 style="font-size:20px;margin-bottom:6px" id="stageCenterTitle">Swiss Alps 4K Scenic Drive & Lounge</h2>
-          <p style="color:#94A3B8;font-size:13px" id="stageCenterSub">Select any channel, YouTube link, Camera Roll photo, or Screen Mirror on your iPhone.</p>
+          <p style="color:#94A3B8;font-size:13px" id="stageCenterSub">Select any channel, YouTube link, Camera Roll photo/video, or Screen Mirror on your iPhone.</p>
         </div>
       </div>
 
-      <video id="videoPlayer" playsinline autoplay muted loop class="fit-contain" style="display:none"></video>
+      <video id="videoPlayer" controls playsinline autoplay muted loop class="fit-contain" style="display:none"></video>
       <iframe id="ytFrame" style="display:none" allow="autoplay; encrypted-media; fullscreen"></iframe>
       <img id="photoViewer" alt="Casted iPhone Photo" />
 
@@ -200,6 +238,13 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
     let currentYtId = '';
     let currentMirrorUrl = '';
     let lastUpdatedAt = 0;
+
+    // If a video URL fails to decode or is a local phone file:// path, show a clear diagnostic on stage
+    videoEl.addEventListener('error', () => {
+      videoEl.style.display = 'none';
+      document.getElementById('stageCenterSub').textContent =
+        'Uploading / transcoding video stream for Car Screen...';
+    });
 
     function extractYouTubeId(urlOrId) {
       if (!urlOrId) return null;
@@ -276,12 +321,19 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
         document.getElementById('hudCategory').textContent =
           (s.activeMedia.category || 'stream').toUpperCase() + ' · ' + (s.quality || '480p');
 
-        const ytId = extractYouTubeId(s.activeMedia.youtubeId || s.activeMedia.streamUrl);
-        const isDirectVideo = /\\.(mp4|m3u8|mov|webm)(\\?|$)/i.test(String(s.activeMedia.streamUrl || '')) ||
-          String(s.activeMedia.streamUrl || '').startsWith('http://') ||
-          String(s.activeMedia.streamUrl || '').startsWith('data:');
+        const streamUrl = String(s.activeMedia.streamUrl || '');
+        const ytId = extractYouTubeId(s.activeMedia.youtubeId || streamUrl);
 
-        if (ytId) {
+        // Ignore raw iPhone-only file:// paths until the HTTP upload URL arrives
+        if (streamUrl.startsWith('file://') || streamUrl.startsWith('ph://')) {
+          videoEl.style.display = 'none';
+          ytFrame.style.display = 'none';
+          document.getElementById('stageCenterSub').textContent =
+            'Uploading "' + s.activeMedia.title + '" from iPhone over Wi-Fi...';
+          return;
+        }
+
+        if (ytId && !streamUrl.includes('/media/')) {
           videoEl.pause();
           videoEl.style.display = 'none';
           ytFrame.style.display = 'block';
@@ -290,14 +342,15 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
             ytFrame.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&mute=1&rel=0&playsinline=1';
           }
           document.getElementById('playStatusText').textContent = '▶ Playing YouTube on Car Screen: ' + s.activeMedia.title;
-        } else if (isDirectVideo && s.activeMedia.streamUrl) {
+        } else if (streamUrl) {
           ytFrame.style.display = 'none';
           ytFrame.src = '';
           currentYtId = '';
           videoEl.style.display = 'block';
-          if (currentMediaUrl !== s.activeMedia.streamUrl) {
-            currentMediaUrl = s.activeMedia.streamUrl;
+          if (currentMediaUrl !== streamUrl) {
+            currentMediaUrl = streamUrl;
             videoEl.src = currentMediaUrl;
+            videoEl.load();
           }
           videoEl.className = s.aspectMode === 'fill' ? 'fit-cover' : s.aspectMode === 'cinema' ? 'fit-cinema' : 'fit-contain';
           if (typeof s.volume === 'number') {
@@ -337,7 +390,6 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       };
     }
 
-    // Also poll /sync every 700ms so HTTP POST updates from iPhone always apply immediately
     setInterval(() => {
       fetch('/sync?pin=' + encodeURIComponent(roomCode))
         .then((r) => r.json())
@@ -355,7 +407,7 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-File-Name, X-Mime-Type');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -363,7 +415,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // HTTP State Sync endpoint (works even if iOS blocks WebSockets)
+  // HTTP State Sync endpoint
   if (req.url && req.url.startsWith('/sync')) {
     if (req.method === 'POST') {
       let body = '';
@@ -376,14 +428,14 @@ const server = http.createServer((req, res) => {
           const pin = String(msg.roomCode || '4829').trim();
           if (msg.payload) {
             console.log(
-              `[iPhone -> Car PIN ${pin}] ${msg.payload.lastRemoteAction || 'State updated'} (mirror=${msg.payload.mirrorMode})`
+              `[iPhone -> Car PIN ${pin}] ${msg.payload.lastRemoteAction || 'State updated'}`
             );
             broadcastRoomState(pin, msg.payload);
           }
           res.setHeader('Content-Type', 'application/json');
           res.writeHead(200);
           res.end(JSON.stringify({ ok: true, roomCode: pin }));
-        } catch (err) {
+        } catch {
           res.writeHead(400);
           res.end(JSON.stringify({ ok: false }));
         }
@@ -391,7 +443,6 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // GET /sync?pin=4829
     const urlObj = new URL(req.url, `http://127.0.0.1:${PORT}`);
     const pin = urlObj.searchParams.get('pin') || '4829';
     const { room } = getOrCreateRoom(pin);
@@ -401,27 +452,85 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Serve uploaded photos/videos from iPhone Camera Roll
+  // Serve uploaded photos/videos with full HTTP 206 Byte-Range support (required by Chrome <video>)
   if (req.url && req.url.startsWith('/media/')) {
     const id = req.url.replace('/media/', '').split('?')[0];
     const item = uploadedMedia.get(id);
-    if (!item) {
+    if (!item || !fs.existsSync(item.filePath)) {
       res.writeHead(404);
       res.end('Not found');
       return;
     }
-    res.setHeader('Content-Type', item.mimeType);
-    res.writeHead(200);
-    res.end(item.buffer);
+
+    const stat = fs.statSync(item.filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = end - start + 1;
+      const file = fs.createReadStream(item.filePath, { start, end });
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': item.mimeType,
+      });
+      file.pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Accept-Ranges': 'bytes',
+        'Content-Type': item.mimeType,
+      });
+      fs.createReadStream(item.filePath).pipe(res);
+    }
     return;
   }
 
-  // Receive base64 photo/video upload from iPhone Expo Go
+  // Receive raw binary or multipart video/photo upload from iPhone Expo Go (`POST /upload-raw`)
+  if (req.method === 'POST' && req.url && req.url.startsWith('/upload-raw')) {
+    const urlObj = new URL(req.url, `http://127.0.0.1:${PORT}`);
+    const ext = urlObj.searchParams.get('ext') || 'mov';
+    const isVideo = urlObj.searchParams.get('video') === '1';
+    const id = `media-${Date.now()}`;
+    const rawFilePath = path.join(MEDIA_DIR, `${id}.${ext}`);
+    const writeStream = fs.createWriteStream(rawFilePath);
+
+    req.pipe(writeStream);
+
+    writeStream.on('finish', () => {
+      const lanIp = getLocalLanIp();
+      if (isVideo) {
+        console.log(`[iPhone Video Upload] Transcoding ${rawFilePath} to H.264 MP4...`);
+        transcodeToBrowserMp4IfNeeded(rawFilePath, (finalPath, finalMime) => {
+          uploadedMedia.set(id, { filePath: finalPath, mimeType: finalMime });
+          const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+          console.log(`[iPhone Video Ready] Streaming at ${publicUrl}`);
+          res.setHeader('Content-Type', 'application/json');
+          res.writeHead(200);
+          res.end(JSON.stringify({ ok: true, url: publicUrl }));
+        });
+      } else {
+        uploadedMedia.set(id, { filePath: rawFilePath, mimeType: 'image/jpeg' });
+        const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+        console.log(`[iPhone Photo Ready] Displaying at ${publicUrl}`);
+        res.setHeader('Content-Type', 'application/json');
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: true, url: publicUrl }));
+      }
+    });
+    return;
+  }
+
+  // Receive JSON base64 photo/video upload from iPhone Expo Go (`POST /upload`)
   if (req.method === 'POST' && req.url === '/upload') {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk;
-      if (body.length > 35 * 1024 * 1024) {
+      if (body.length > 80 * 1024 * 1024) {
         req.destroy();
       }
     });
@@ -429,16 +538,31 @@ const server = http.createServer((req, res) => {
       try {
         const data = JSON.parse(body);
         const mimeType = data.mimeType || 'image/jpeg';
+        const isVideo = mimeType.startsWith('video/');
         const base64Clean = String(data.base64 || '').replace(/^data:[^;]+;base64,/, '');
         const buffer = Buffer.from(base64Clean, 'base64');
         const id = `media-${Date.now()}`;
-        uploadedMedia.set(id, { mimeType, buffer });
+        const rawPath = path.join(MEDIA_DIR, `${id}.${isVideo ? 'mov' : 'jpg'}`);
+        fs.writeFileSync(rawPath, buffer);
         const lanIp = getLocalLanIp();
-        const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
-        console.log(`[iPhone Upload] Saved Camera Roll media -> ${publicUrl}`);
-        res.setHeader('Content-Type', 'application/json');
-        res.writeHead(200);
-        res.end(JSON.stringify({ ok: true, url: publicUrl }));
+
+        if (isVideo) {
+          transcodeToBrowserMp4IfNeeded(rawPath, (finalPath, finalMime) => {
+            uploadedMedia.set(id, { filePath: finalPath, mimeType: finalMime });
+            const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+            console.log(`[iPhone Video Upload] Saved & transcoded -> ${publicUrl}`);
+            res.setHeader('Content-Type', 'application/json');
+            res.writeHead(200);
+            res.end(JSON.stringify({ ok: true, url: publicUrl }));
+          });
+        } else {
+          uploadedMedia.set(id, { filePath: rawPath, mimeType });
+          const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+          console.log(`[iPhone Photo Upload] Saved -> ${publicUrl}`);
+          res.setHeader('Content-Type', 'application/json');
+          res.writeHead(200);
+          res.end(JSON.stringify({ ok: true, url: publicUrl }));
+        }
       } catch (err) {
         res.writeHead(400);
         res.end(JSON.stringify({ ok: false, error: String(err) }));
@@ -480,7 +604,7 @@ const server = http.createServer((req, res) => {
   );
 });
 
-const wss = new WebSocketServer({ server, maxPayload: 35 * 1024 * 1024 });
+const wss = new WebSocketServer({ server, maxPayload: 80 * 1024 * 1024 });
 
 wss.on('connection', (ws) => {
   let currentRoom = '4829';

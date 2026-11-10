@@ -391,16 +391,16 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     async (uri: string, title: string, isVideo: boolean, base64Data?: string) => {
       let broadcastUri = uri;
 
-      // If picked from iPhone Camera Roll with base64 data, upload to the laptop relay server
-      // so the Car Screen Receiver browser can render the actual photo/video over Wi-Fi
+      const cleanHost = relayHost
+        .replace(/^wss?:\/\//, '')
+        .replace(/^https?:\/\//, '')
+        .trim();
+      const hostWithPort = cleanHost.includes(':')
+        ? cleanHost
+        : `${cleanHost}:${BRAND.defaultRelayPort}`;
+
+      // 1. If we have base64 data (photos), upload via POST /upload
       if (base64Data) {
-        const cleanHost = relayHost
-          .replace(/^ws:\/\//, '')
-          .replace(/^http:\/\//, '')
-          .trim();
-        const hostWithPort = cleanHost.includes(':')
-          ? cleanHost
-          : `${cleanHost}:${BRAND.defaultRelayPort}`;
         try {
           const resp = await fetch(`http://${hostWithPort}/upload`, {
             method: 'POST',
@@ -418,6 +418,28 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
           }
         } catch {
           broadcastUri = `data:${isVideo ? 'video/mp4' : 'image/jpeg'};base64,${base64Data}`;
+        }
+      } else if (uri.startsWith('file://') || uri.startsWith('ph://')) {
+        // 2. For iPhone Camera Roll videos (e.g. IMG_4425.mov), read the local file blob
+        // and upload the raw binary over Wi-Fi to POST /upload-raw so the laptop transcodes & streams it
+        try {
+          const fileResp = await fetch(uri);
+          const blob = await fileResp.blob();
+          const ext = title.split('.').pop()?.toLowerCase() || (isVideo ? 'mov' : 'jpg');
+          const uploadResp = await fetch(
+            `http://${hostWithPort}/upload-raw?video=${isVideo ? '1' : '0'}&ext=${ext}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/octet-stream' },
+              body: blob,
+            }
+          );
+          const json = await uploadResp.json();
+          if (json && json.ok && json.url) {
+            broadcastUri = json.url;
+          }
+        } catch {
+          // Keep original URI if upload fails
         }
       }
 
