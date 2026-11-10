@@ -283,10 +283,26 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
 
         {mirrorMode === 'screen_broadcast' && (
           <View style={styles.mirrorBox}>
-            <Text style={styles.settingTitle}>Quick Mirror Shortcuts</Text>
+            <View style={styles.wholePhoneGuideCard}>
+              <Text style={styles.wholePhoneGuideTitle}>
+                How to Mirror Your Entire iPhone Screen
+              </Text>
+              <Text style={styles.wholePhoneStep}>
+                1. Swipe down from the top-right corner of your iPhone to open{' '}
+                <Text style={{ fontWeight: '800' }}>Control Center</Text>.
+              </Text>
+              <Text style={styles.wholePhoneStep}>
+                2. Tap the <Text style={{ fontWeight: '800' }}>Screen Mirroring</Text> icon (two overlapping rectangles).
+              </Text>
+              <Text style={styles.wholePhoneStep}>
+                3. Select <Text style={{ fontWeight: '800', color: '#2563EB' }}>"ParkCast Car Display"</Text> to mirror your entire phone & all apps live!
+              </Text>
+            </View>
+
+            <Text style={styles.settingTitle}>Or Mirror a Web Page / Video Inside Car Browser</Text>
             <View style={styles.shortcutRow}>
               {[
-                { label: 'Phone Home', url: null },
+                { label: 'Phone Mirror Guide', url: null },
                 { label: 'YouTube', url: 'https://www.youtube.com/watch?v=ysz5S6PUM-U' },
                 { label: 'Mazda 3 Info', url: 'https://en.m.wikipedia.org/wiki/Mazda3' },
               ].map((s) => (
@@ -561,6 +577,26 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
+  },
+  wholePhoneGuideCard: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginBottom: 14,
+  },
+  wholePhoneGuideTitle: {
+    color: '#1E3A8A',
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  wholePhoneStep: {
+    color: '#1E40AF',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 4,
   },
   shortcutRow: {
     flexDirection: 'row',

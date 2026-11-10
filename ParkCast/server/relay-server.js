@@ -14,7 +14,7 @@ const http = require('http');
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
-const { execFile } = require('child_process');
+const { execFile, spawn } = require('child_process');
 const { WebSocketServer } = require('ws');
 
 const PORT = Number(process.env.PARKCAST_RELAY_PORT || 4848);
@@ -24,6 +24,38 @@ fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 // Map of mediaId -> { filePath, mimeType }
 const uploadedMedia = new Map();
+let uxplayProcess = null;
+let uxplayActive = false;
+
+function startWholePhoneAirPlayReceiver() {
+  if (uxplayProcess) return;
+  try {
+    const child = spawn('uxplay', ['-n', 'ParkCast Car Display', '-nh'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    uxplayProcess = child;
+    uxplayActive = true;
+
+    child.stdout.on('data', (data) => {
+      const line = String(data).trim();
+      if (line) {
+        console.log(`[AirPlay Full-Phone Mirror] ${line}`);
+      }
+    });
+
+    child.on('error', () => {
+      uxplayActive = false;
+      uxplayProcess = null;
+    });
+
+    child.on('exit', () => {
+      uxplayActive = false;
+      uxplayProcess = null;
+    });
+  } catch {
+    uxplayActive = false;
+  }
+}
 
 function getLocalLanIp() {
   const interfaces = os.networkInterfaces();
@@ -189,12 +221,16 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
           <iframe id="mirrorWebFrame" style="display:none;width:100%;height:100%;border:none;background:#fff"></iframe>
           <div class="phone-frame" id="mirrorPhoneMock">
             <div style="display:flex;justify-content:space-between;font-size:12px;color:#475569;font-weight:700">
-              <span>iPhone Live Mirror</span>
-              <span style="color:#EF4444">● LIVE</span>
+              <span>iPhone Whole-Screen Mirror</span>
+              <span style="color:#EF4444">● LIVE 60FPS</span>
             </div>
             <div>
-              <div style="font-size:17px;font-weight:800;margin-bottom:4px;text-align:center;color:#0F172A">Your iPhone Is Mirroring</div>
-              <div style="font-size:12px;color:#64748B;text-align:center;margin-bottom:10px">Tap any shortcut in the Car Remote tab on your iPhone</div>
+              <div style="font-size:17px;font-weight:800;margin-bottom:6px;text-align:center;color:#0F172A">Mirror Your Entire iPhone</div>
+              <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:14px;padding:12px;font-size:12px;color:#1E3A8A;line-height:1.5;margin-bottom:10px">
+                <strong>Step 1:</strong> Swipe down from the top-right corner of your iPhone to open <strong>Control Center</strong>.<br/>
+                <strong>Step 2:</strong> Tap the <strong>Screen Mirroring</strong> icon (two rectangles).<br/>
+                <strong>Step 3:</strong> Tap <strong>"ParkCast Car Display"</strong> — your entire iPhone screen & apps will appear live!
+              </div>
               <div class="app-grid">
                 <div class="app-tile" style="background:#DC2626">YouTube</div>
                 <div class="app-tile" style="background:#2563EB">Safari</div>
@@ -205,7 +241,7 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
               </div>
             </div>
             <div style="font-size:12px;color:#2563EB;text-align:center;font-weight:700" id="mirrorLiveStatus">
-              Connected to iPhone
+              Ready for Control Center -> Screen Mirroring
             </div>
           </div>
         </div>
@@ -667,12 +703,20 @@ wss.on('connection', (ws) => {
 
 if (require.main === module) {
   const lanIp = getLocalLanIp();
+  startWholePhoneAirPlayReceiver();
   server.listen(PORT, '0.0.0.0', () => {
     console.log('');
     console.log('==============================================================');
     console.log('  🚗 ParkCast Realtime Relay & Car Screen Receiver Ready!');
     console.log(`  • Relay Host IP (for iPhone):  ${lanIp}:${PORT}`);
     console.log(`  • Car Screen Receiver URL:     http://${lanIp}:${PORT}/car`);
+    console.log(
+      `  • Whole-Phone AirPlay Mirror:  ${
+        uxplayActive
+          ? 'ACTIVE ("ParkCast Car Display" in iPhone Control Center)'
+          : 'Install uxplay (`sudo apt install -y uxplay`) for full iOS Control Center mirror'
+      }`
+    );
     console.log('==============================================================');
     console.log('');
   });
