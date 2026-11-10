@@ -14,20 +14,20 @@
     "test": "node --test tests/parkcast.test.mjs"
   },
   "dependencies": {
-    "@expo/metro-runtime": "~4.0.1",
-    "expo": "~52.0.37",
-    "expo-image-picker": "~16.0.6",
-    "expo-status-bar": "~2.0.1",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "react-native": "0.76.9",
-    "react-native-web": "~0.19.13",
+    "@expo/metro-runtime": "~58.0.17",
+    "expo": "^58.0.23",
+    "expo-image-picker": "~58.0.10",
+    "expo-status-bar": "~58.0.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-web": "^0.21.4",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@types/react": "~18.3.12",
+    "@types/react": "~19.3.0",
     "@types/ws": "^8.5.13",
-    "typescript": "~5.3.3"
+    "typescript": "~6.0.3"
   }
 }

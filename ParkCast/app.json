@@ -14,7 +14,9 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "ParkCast needs access to your photos and videos so you can cast them to your car display while parked.",
         "NSLocalNetworkUsageDescription": "ParkCast uses your local network to discover and stream media to your car display and AirPlay receivers.",
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -25,6 +27,9 @@
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      "expo-status-bar"
+    ]
   }
 }

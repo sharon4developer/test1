@@ -38,7 +38,7 @@ const ParkCastShell: React.FC = () => {
   return (
     <SubscriptionProvider isCastingActive={isCastingActive}>
       <SafeAreaView style={styles.safeRoot}>
-        <StatusBar barStyle="light-content" backgroundColor={BRAND.colors.bgPrimary} />
+        <StatusBar barStyle="light-content" />
 
         {/* Top Mode Switcher Bar (lets you test iPhone Controller, Car Display Receiver, or Both side-by-side) */}
         <View style={styles.modeBar}>
