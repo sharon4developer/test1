@@ -189,7 +189,8 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
   }, [relayHost, state.roomCode]);
 
-  // Broadcast state updates to paired Car Screen over WebSocket relay
+  // Broadcast state updates to paired Car Screen over BOTH WebSocket AND HTTP POST /sync
+  // so iPhones running inside Expo Go always reach the Car Screen even when iOS blocks raw WebSockets
   useEffect(() => {
     if (suppressBroadcastRef.current) {
       suppressBroadcastRef.current = false;
@@ -205,12 +206,36 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         })
       );
     }
-  }, [state]);
 
-  // Advance playback clock while playing
+    const cleanHost = relayHost
+      .replace(/^wss?:\/\//, '')
+      .replace(/^https?:\/\//, '')
+      .trim();
+    const httpBase = cleanHost.includes('.ngrok') || cleanHost.includes('.exp.direct')
+      ? `https://${cleanHost}`
+      : cleanHost.includes(':')
+      ? `http://${cleanHost}`
+      : `http://${cleanHost}:${BRAND.defaultRelayPort}`;
+
+    fetch(`${httpBase}/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roomCode: state.roomCode,
+        payload: state,
+      }),
+    })
+      .then((res) => {
+        if (res.ok) setRelayConnected(true);
+      })
+      .catch(() => {});
+  }, [state, relayHost]);
+
+  // Advance playback clock locally without flooding the network relay every second
   useEffect(() => {
     if (!state.isPlaying || state.connectionTarget === 'disconnected') return;
     const timer = setInterval(() => {
+      suppressBroadcastRef.current = true;
       setState((prev) => {
         const nextSec = prev.currentTimeSec + 1;
         return {

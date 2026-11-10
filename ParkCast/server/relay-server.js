@@ -2,10 +2,12 @@
 /**
  * ParkCast Realtime Pairing Relay & Standalone Car Screen Receiver Server
  *
- * - WebSocket Relay on ws://<LAN_IP>:4848 (supports large base64 photo/frame payloads)
- * - HTTP Media Upload endpoint on POST http://<LAN_IP>:4848/upload
- *   (Lets the iPhone upload real Camera Roll photos/videos over Wi-Fi to display on /car)
- * - Standalone Car Cinema Receiver Web Player on http://<LAN_IP>:4848/car
+ * Supports BOTH:
+ * 1. WebSocket (`ws://<HOST>:4848`)
+ * 2. Instant HTTP Poll/Push (`POST /sync` & `GET /sync?pin=4829`) so iPhones in Expo Go
+ *    never fail if iOS blocks raw WebSockets.
+ * 3. Camera Roll Photo/Video upload (`POST /upload`)
+ * 4. Standalone Car Cinema Receiver Web Player (`http://<HOST>:4848/car`)
  */
 
 const http = require('http');
@@ -13,7 +15,7 @@ const os = require('os');
 const { WebSocketServer } = require('ws');
 
 const PORT = Number(process.env.PARKCAST_RELAY_PORT || 4848);
-const rooms = new Map();
+const rooms = new Map(); // roomCode -> { clients: Set<WebSocket>, lastState: object | null }
 const uploadedMedia = new Map(); // id -> { mimeType, buffer }
 
 function getLocalLanIp() {
@@ -25,7 +27,32 @@ function getLocalLanIp() {
       }
     }
   }
-  return '127.0.0.1';
+  return '10.0.0.87';
+}
+
+function getOrCreateRoom(code) {
+  const clean = String(code || '4829').trim();
+  if (!rooms.has(clean)) {
+    rooms.set(clean, { clients: new Set(), lastState: null });
+  }
+  return { code: clean, room: rooms.get(clean) };
+}
+
+function broadcastRoomState(code, payload, senderWs = null) {
+  const { code: clean, room } = getOrCreateRoom(code);
+  room.lastState = payload;
+
+  const message = JSON.stringify({
+    type: 'state_update',
+    roomCode: clean,
+    payload,
+  });
+
+  for (const client of room.clients) {
+    if (client !== senderWs && client.readyState === 1) {
+      client.send(message);
+    }
+  }
 }
 
 const CAR_RECEIVER_HTML = `<!DOCTYPE html>
@@ -33,7 +60,7 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ParkCast Car Screen Receiver (Mazda 3 GT 10.25" Widescreen Ready)</title>
+  <title>ParkCast Car Screen Receiver</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: #05080F; color: #F8FAFC; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -103,7 +130,6 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
         <div class="badge" id="lastActionBadge">Connected · Ready</div>
       </div>
 
-      <!-- Ambient Visualizer Backdrop (always visible behind or when loading) -->
       <div class="visualizer-fallback" id="visualizerFallback">
         <div style="background:rgba(15,23,42,0.9);border:1px solid #334155;border-radius:18px;padding:24px 32px;max-width:480px">
           <div style="color:#34D399;font-size:11px;font-weight:800;letter-spacing:1px;margin-bottom:8px">● PARKCAST CAR CINEMA STAGE</div>
@@ -116,7 +142,6 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       <iframe id="ytFrame" style="display:none" allow="autoplay; encrypted-media; fullscreen"></iframe>
       <img id="photoViewer" alt="Casted iPhone Photo" />
 
-      <!-- Live iPhone Screen Mirroring Stage -->
       <div class="mirror-overlay" id="mirrorOverlay">
         <div class="mirror-header">
           <span style="color:#F43F5E;font-weight:800">● LIVE IPHONE SCREEN MIRRORING (60FPS)</span>
@@ -126,12 +151,12 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
           <iframe id="mirrorWebFrame" style="display:none;width:100%;height:100%;border:none;background:#fff"></iframe>
           <div class="phone-frame" id="mirrorPhoneMock">
             <div style="display:flex;justify-content:space-between;font-size:11px;color:#94A3B8;font-weight:700">
-              <span>iPhone 16 Pro · ParkCast</span>
+              <span>iPhone · ParkCast Live</span>
               <span style="color:#F43F5E">● REC</span>
             </div>
             <div>
               <div style="font-size:16px;font-weight:800;margin-bottom:4px;text-align:center">Live iPhone Mirror Active</div>
-              <div style="font-size:11px;color:#94A3B8;text-align:center;margin-bottom:8px">Tap any app or enter a URL on your iPhone Mirror controller</div>
+              <div style="font-size:11px;color:#94A3B8;text-align:center;margin-bottom:8px">Tap any app shortcut on your iPhone Remote screen</div>
               <div class="app-grid">
                 <div class="app-tile" style="background:#DC2626">YouTube</div>
                 <div class="app-tile" style="background:#2563EB">Safari Web</div>
@@ -174,6 +199,7 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
     let currentMediaUrl = '';
     let currentYtId = '';
     let currentMirrorUrl = '';
+    let lastUpdatedAt = 0;
 
     function extractYouTubeId(urlOrId) {
       if (!urlOrId) return null;
@@ -181,6 +207,111 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       if (m) return m[1];
       if (/^[A-Za-z0-9_-]{11}$/.test(urlOrId)) return urlOrId;
       return null;
+    }
+
+    function applyState(s) {
+      if (!s) return;
+      if (s.updatedAt && s.updatedAt <= lastUpdatedAt) return;
+      if (s.updatedAt) lastUpdatedAt = s.updatedAt;
+
+      document.getElementById('qualityBadge').textContent = s.quality || '480p';
+      document.getElementById('aspectBadge').textContent = (s.aspectMode || 'fit').toUpperCase();
+      document.getElementById('volBadge').textContent = s.isMuted ? 'MUTED' : ('VOL ' + (s.volume ?? 85) + '%');
+      document.getElementById('lastActionBadge').textContent = s.lastRemoteAction || 'Synced with iPhone';
+
+      if (s.cursorPos) {
+        const c = document.getElementById('remoteCursor');
+        c.style.left = s.cursorPos.x + '%';
+        c.style.top = s.cursorPos.y + '%';
+      }
+
+      if (s.steeringSide === 'right') {
+        document.getElementById('mainRow').style.flexDirection = 'row-reverse';
+      } else {
+        document.getElementById('mainRow').style.flexDirection = 'row';
+      }
+
+      if (s.mirrorMode === 'photo_slideshow' && s.selectedPhotoUri) {
+        mirrorOverlay.style.display = 'none';
+        videoEl.pause();
+        videoEl.style.display = 'none';
+        ytFrame.style.display = 'none';
+        photoViewer.style.display = 'block';
+        photoViewer.src = s.selectedPhotoUri;
+        document.getElementById('hudTitle').textContent = 'iPhone Camera Roll Photo Cast';
+        document.getElementById('hudCategory').textContent = 'LIVE PHOTO MIRROR · ' + (s.quality || '1080p');
+        return;
+      } else {
+        photoViewer.style.display = 'none';
+      }
+
+      if (s.mirrorMode === 'screen_broadcast') {
+        mirrorOverlay.style.display = 'flex';
+        videoEl.pause();
+        document.getElementById('mirrorLiveStatus').textContent = s.lastRemoteAction || 'Live Mirroring from iPhone';
+        if (s.mirrorWebUrl) {
+          document.getElementById('mirrorUrlLabel').textContent = s.mirrorWebUrl;
+          const ytMirrorId = extractYouTubeId(s.mirrorWebUrl);
+          const targetEmbed = ytMirrorId
+            ? ('https://www.youtube.com/embed/' + ytMirrorId + '?autoplay=1&mute=1&rel=0')
+            : s.mirrorWebUrl;
+          mirrorPhoneMock.style.display = 'none';
+          mirrorWebFrame.style.display = 'block';
+          if (currentMirrorUrl !== targetEmbed) {
+            currentMirrorUrl = targetEmbed;
+            mirrorWebFrame.src = targetEmbed;
+          }
+        } else {
+          mirrorWebFrame.style.display = 'none';
+          mirrorPhoneMock.style.display = 'flex';
+        }
+        return;
+      } else {
+        mirrorOverlay.style.display = 'none';
+      }
+
+      if (s.activeMedia) {
+        document.getElementById('hudTitle').textContent = s.activeMedia.title;
+        document.getElementById('stageCenterTitle').textContent = s.activeMedia.title;
+        document.getElementById('hudCategory').textContent =
+          (s.activeMedia.category || 'stream').toUpperCase() + ' · ' + (s.quality || '480p');
+
+        const ytId = extractYouTubeId(s.activeMedia.youtubeId || s.activeMedia.streamUrl);
+        const isDirectVideo = /\\.(mp4|m3u8|mov|webm)(\\?|$)/i.test(String(s.activeMedia.streamUrl || '')) ||
+          String(s.activeMedia.streamUrl || '').startsWith('http://') ||
+          String(s.activeMedia.streamUrl || '').startsWith('data:');
+
+        if (ytId) {
+          videoEl.pause();
+          videoEl.style.display = 'none';
+          ytFrame.style.display = 'block';
+          if (currentYtId !== ytId) {
+            currentYtId = ytId;
+            ytFrame.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&mute=1&rel=0&playsinline=1';
+          }
+          document.getElementById('playStatusText').textContent = '▶ Playing YouTube on Car Screen: ' + s.activeMedia.title;
+        } else if (isDirectVideo && s.activeMedia.streamUrl) {
+          ytFrame.style.display = 'none';
+          ytFrame.src = '';
+          currentYtId = '';
+          videoEl.style.display = 'block';
+          if (currentMediaUrl !== s.activeMedia.streamUrl) {
+            currentMediaUrl = s.activeMedia.streamUrl;
+            videoEl.src = currentMediaUrl;
+          }
+          videoEl.className = s.aspectMode === 'fill' ? 'fit-cover' : s.aspectMode === 'cinema' ? 'fit-cinema' : 'fit-contain';
+          if (typeof s.volume === 'number') {
+            videoEl.volume = Math.max(0, Math.min(1, s.volume / 100));
+          }
+          if (s.isPlaying) {
+            videoEl.play().catch(() => {});
+            document.getElementById('playStatusText').textContent = '▶ Playing on Car Screen: ' + s.activeMedia.title;
+          } else {
+            videoEl.pause();
+            document.getElementById('playStatusText').textContent = '❚❚ Paused by iPhone Controller';
+          }
+        }
+      }
     }
 
     function connectRelay() {
@@ -196,117 +327,25 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
         try {
           const msg = JSON.parse(ev.data);
           if (msg.type === 'state_update' && msg.payload) {
-            const s = msg.payload;
-            document.getElementById('qualityBadge').textContent = s.quality || '480p';
-            document.getElementById('aspectBadge').textContent = (s.aspectMode || 'fit').toUpperCase();
-            document.getElementById('volBadge').textContent = s.isMuted ? 'MUTED' : ('VOL ' + (s.volume ?? 85) + '%');
-            document.getElementById('lastActionBadge').textContent = s.lastRemoteAction || 'Synced with iPhone';
-
-            if (s.cursorPos) {
-              const c = document.getElementById('remoteCursor');
-              c.style.left = s.cursorPos.x + '%';
-              c.style.top = s.cursorPos.y + '%';
-            }
-
-            if (s.steeringSide === 'right') {
-              document.getElementById('mainRow').style.flexDirection = 'row-reverse';
-            } else {
-              document.getElementById('mainRow').style.flexDirection = 'row';
-            }
-
-            // 1. Check Photo Cast Mode
-            if (s.mirrorMode === 'photo_slideshow' && s.selectedPhotoUri) {
-              mirrorOverlay.style.display = 'none';
-              videoEl.pause();
-              videoEl.style.display = 'none';
-              ytFrame.style.display = 'none';
-              photoViewer.style.display = 'block';
-              photoViewer.src = s.selectedPhotoUri;
-              document.getElementById('hudTitle').textContent = 'iPhone Camera Roll Photo Cast';
-              document.getElementById('hudCategory').textContent = 'LIVE PHOTO MIRROR · ' + (s.quality || '1080p');
-              return;
-            } else {
-              photoViewer.style.display = 'none';
-            }
-
-            // 2. Check Live Screen Mirror Mode
-            if (s.mirrorMode === 'screen_broadcast') {
-              mirrorOverlay.style.display = 'flex';
-              videoEl.pause();
-              document.getElementById('mirrorLiveStatus').textContent = s.lastRemoteAction || 'Live Mirroring from iPhone';
-              if (s.mirrorWebUrl) {
-                document.getElementById('mirrorUrlLabel').textContent = s.mirrorWebUrl;
-                const ytMirrorId = extractYouTubeId(s.mirrorWebUrl);
-                const targetEmbed = ytMirrorId
-                  ? ('https://www.youtube.com/embed/' + ytMirrorId + '?autoplay=1&rel=0')
-                  : s.mirrorWebUrl;
-                mirrorPhoneMock.style.display = 'none';
-                mirrorWebFrame.style.display = 'block';
-                if (currentMirrorUrl !== targetEmbed) {
-                  currentMirrorUrl = targetEmbed;
-                  mirrorWebFrame.src = targetEmbed;
-                }
-              } else {
-                mirrorWebFrame.style.display = 'none';
-                mirrorPhoneMock.style.display = 'flex';
-              }
-              return;
-            } else {
-              mirrorOverlay.style.display = 'none';
-            }
-
-            // 3. Standard Video / YouTube Stream Mode
-            if (s.activeMedia) {
-              document.getElementById('hudTitle').textContent = s.activeMedia.title;
-              document.getElementById('stageCenterTitle').textContent = s.activeMedia.title;
-              document.getElementById('hudCategory').textContent =
-                (s.activeMedia.category || 'stream').toUpperCase() + ' · ' + (s.quality || '480p');
-
-              const ytId = extractYouTubeId(s.activeMedia.youtubeId || s.activeMedia.streamUrl);
-              const isDirectVideo = /\\.(mp4|m3u8|mov|webm)(\\?|$)/i.test(String(s.activeMedia.streamUrl || '')) ||
-                String(s.activeMedia.streamUrl || '').startsWith('http://') ||
-                String(s.activeMedia.streamUrl || '').startsWith('data:');
-
-              if (ytId) {
-                videoEl.pause();
-                videoEl.style.display = 'none';
-                ytFrame.style.display = 'block';
-                if (currentYtId !== ytId) {
-                  currentYtId = ytId;
-                  ytFrame.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&mute=1&rel=0&playsinline=1';
-                }
-                document.getElementById('playStatusText').textContent = '▶ Playing YouTube on Car Screen: ' + s.activeMedia.title;
-              } else if (isDirectVideo && s.activeMedia.streamUrl) {
-                ytFrame.style.display = 'none';
-                ytFrame.src = '';
-                currentYtId = '';
-                videoEl.style.display = 'block';
-                if (currentMediaUrl !== s.activeMedia.streamUrl) {
-                  currentMediaUrl = s.activeMedia.streamUrl;
-                  videoEl.src = currentMediaUrl;
-                }
-                videoEl.className = s.aspectMode === 'fill' ? 'fit-cover' : s.aspectMode === 'cinema' ? 'fit-cinema' : 'fit-contain';
-                if (typeof s.volume === 'number') {
-                  videoEl.volume = Math.max(0, Math.min(1, s.volume / 100));
-                }
-                if (s.isPlaying) {
-                  videoEl.play().catch(() => {});
-                  document.getElementById('playStatusText').textContent = '▶ Playing on Car Screen: ' + s.activeMedia.title;
-                } else {
-                  videoEl.pause();
-                  document.getElementById('playStatusText').textContent = '❚❚ Paused by iPhone Controller';
-                }
-              }
-            }
+            applyState(msg.payload);
           }
         } catch (e) {}
       };
 
       ws.onclose = () => {
-        document.getElementById('connDot').style.background = '#F59E0B';
         setTimeout(connectRelay, 2000);
       };
     }
+
+    // Also poll /sync every 700ms so HTTP POST updates from iPhone always apply immediately
+    setInterval(() => {
+      fetch('/sync?pin=' + encodeURIComponent(roomCode))
+        .then((r) => r.json())
+        .then((d) => {
+          if (d && d.payload) applyState(d.payload);
+        })
+        .catch(() => {});
+    }, 700);
 
     connectRelay();
   </script>
@@ -321,6 +360,44 @@ const server = http.createServer((req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     res.end();
+    return;
+  }
+
+  // HTTP State Sync endpoint (works even if iOS blocks WebSockets)
+  if (req.url && req.url.startsWith('/sync')) {
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
+      req.on('end', () => {
+        try {
+          const msg = JSON.parse(body);
+          const pin = String(msg.roomCode || '4829').trim();
+          if (msg.payload) {
+            console.log(
+              `[iPhone -> Car PIN ${pin}] ${msg.payload.lastRemoteAction || 'State updated'} (mirror=${msg.payload.mirrorMode})`
+            );
+            broadcastRoomState(pin, msg.payload);
+          }
+          res.setHeader('Content-Type', 'application/json');
+          res.writeHead(200);
+          res.end(JSON.stringify({ ok: true, roomCode: pin }));
+        } catch (err) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ ok: false }));
+        }
+      });
+      return;
+    }
+
+    // GET /sync?pin=4829
+    const urlObj = new URL(req.url, `http://127.0.0.1:${PORT}`);
+    const pin = urlObj.searchParams.get('pin') || '4829';
+    const { room } = getOrCreateRoom(pin);
+    res.setHeader('Content-Type', 'application/json');
+    res.writeHead(200);
+    res.end(JSON.stringify({ ok: true, roomCode: pin, payload: room.lastState }));
     return;
   }
 
@@ -358,6 +435,7 @@ const server = http.createServer((req, res) => {
         uploadedMedia.set(id, { mimeType, buffer });
         const lanIp = getLocalLanIp();
         const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+        console.log(`[iPhone Upload] Saved Camera Roll media -> ${publicUrl}`);
         res.setHeader('Content-Type', 'application/json');
         res.writeHead(200);
         res.end(JSON.stringify({ ok: true, url: publicUrl }));
@@ -412,11 +490,8 @@ wss.on('connection', (ws) => {
     if (rooms.has(currentRoom)) {
       rooms.get(currentRoom).clients.delete(ws);
     }
+    const { room } = getOrCreateRoom(clean);
     currentRoom = clean;
-    if (!rooms.has(clean)) {
-      rooms.set(clean, { clients: new Set(), lastState: null });
-    }
-    const room = rooms.get(clean);
     room.clients.add(ws);
 
     if (room.lastState) {
@@ -445,21 +520,10 @@ wss.on('connection', (ws) => {
         if (targetRoom !== currentRoom) {
           joinRoom(targetRoom);
         }
-        const room = rooms.get(currentRoom);
-        if (!room) return;
-        room.lastState = msg.payload;
-
-        for (const client of room.clients) {
-          if (client !== ws && client.readyState === 1) {
-            client.send(
-              JSON.stringify({
-                type: 'state_update',
-                roomCode: currentRoom,
-                payload: msg.payload,
-              })
-            );
-          }
-        }
+        console.log(
+          `[WS iPhone -> Car PIN ${currentRoom}] ${msg.payload.lastRemoteAction || 'State updated'}`
+        );
+        broadcastRoomState(currentRoom, msg.payload, ws);
       }
     } catch {
       // Ignore malformed JSON frames
@@ -470,7 +534,7 @@ wss.on('connection', (ws) => {
     if (rooms.has(currentRoom)) {
       const room = rooms.get(currentRoom);
       room.clients.delete(ws);
-      if (room.clients.size === 0) {
+      if (room.clients.size === 0 && !room.lastState) {
         rooms.delete(currentRoom);
       }
     }
