@@ -24,17 +24,24 @@ fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 // Map of mediaId -> { filePath, mimeType }
 const uploadedMedia = new Map();
+const LIVE_MIRROR_JPG = path.join(MEDIA_DIR, 'live-mirror.jpg');
 let uxplayProcess = null;
 let uxplayActive = false;
 
 function startWholePhoneAirPlayReceiver() {
   if (uxplayProcess) return;
   try {
-    // Use -p so uxplay binds fixed ports (TCP 7000,7001,7100 and UDP 6000,6001,7011)
-    // instead of random dynamic ports that get blocked by Linux UFW firewall.
-    const child = spawn('uxplay', ['-n', 'ParkCast Car Display', '-nh', '-p'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    // Pipe live iPhone AirPlay H.264 video frames through GStreamer jpegenc directly into
+    // /tmp/parkcast-media/live-mirror.jpg so http://<IP>:4848/car renders the live iPhone
+    // screen right inside the browser tab in real time!
+    const gstSink = `videoconvert ! jpegenc quality=75 ! multifilesink location=${LIVE_MIRROR_JPG}`;
+    const child = spawn(
+      'uxplay',
+      ['-n', 'ParkCast Car Display', '-nh', '-p', '-vs', gstSink],
+      {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }
+    );
     uxplayProcess = child;
     uxplayActive = true;
 
@@ -228,6 +235,7 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
         </div>
         <div class="mirror-body">
           <iframe id="mirrorWebFrame" style="display:none;width:100%;height:100%;border:none;background:#fff"></iframe>
+          <img id="liveAirPlayImg" style="display:none;height:96%;width:auto;max-width:96%;object-fit:contain;border-radius:26px;border:3px solid #2563EB;box-shadow:0 16px 40px rgba(15,23,42,0.22);background:#000" alt="Live iPhone Screen" />
           <div class="phone-frame" id="mirrorPhoneMock">
             <div style="display:flex;justify-content:space-between;font-size:12px;color:#475569;font-weight:700">
               <span>iPhone Whole-Screen Mirror</span>
@@ -435,6 +443,7 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       };
     }
 
+    // Also poll /sync every 700ms so HTTP POST updates from iPhone always apply immediately
     setInterval(() => {
       fetch('/sync?pin=' + encodeURIComponent(roomCode))
         .then((r) => r.json())
@@ -443,6 +452,27 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
         })
         .catch(() => {});
     }, 700);
+
+    // Poll /mirror-status every 180ms (~6fps smooth live browser feed) when UxPlay is receiving live iPhone AirPlay frames
+    const liveAirPlayImg = document.getElementById('liveAirPlayImg');
+    setInterval(() => {
+      fetch('/mirror-status')
+        .then((r) => r.json())
+        .then((st) => {
+          if (st && st.streaming) {
+            mirrorOverlay.style.display = 'flex';
+            mirrorPhoneMock.style.display = 'none';
+            mirrorWebFrame.style.display = 'none';
+            liveAirPlayImg.style.display = 'block';
+            liveAirPlayImg.src = '/mirror-frame.jpg?t=' + st.mtime;
+            document.getElementById('mirrorUrlLabel').textContent = 'Live iPhone AirPlay Stream Active';
+          } else if (liveAirPlayImg.style.display === 'block') {
+            liveAirPlayImg.style.display = 'none';
+            mirrorPhoneMock.style.display = 'flex';
+          }
+        })
+        .catch(() => {});
+    }, 180);
 
     connectRelay();
   </script>
@@ -456,6 +486,41 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // Check if live AirPlay iPhone mirror frame is actively updating (updated within the last 8 seconds)
+  if (req.url && req.url.startsWith('/mirror-status')) {
+    let streaming = false;
+    let mtime = 0;
+    try {
+      if (fs.existsSync(LIVE_MIRROR_JPG)) {
+        const st = fs.statSync(LIVE_MIRROR_JPG);
+        mtime = st.mtimeMs;
+        if (st.size > 100 && Date.now() - st.mtimeMs < 8000) {
+          streaming = true;
+        }
+      }
+    } catch {}
+    res.setHeader('Content-Type', 'application/json');
+    res.writeHead(200);
+    res.end(JSON.stringify({ ok: true, streaming, mtime }));
+    return;
+  }
+
+  // Serve the latest live iPhone AirPlay JPEG frame to /car
+  if (req.url && req.url.startsWith('/mirror-frame.jpg')) {
+    try {
+      if (fs.existsSync(LIVE_MIRROR_JPG)) {
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        res.writeHead(200);
+        fs.createReadStream(LIVE_MIRROR_JPG).pipe(res);
+        return;
+      }
+    } catch {}
+    res.writeHead(404);
     res.end();
     return;
   }
