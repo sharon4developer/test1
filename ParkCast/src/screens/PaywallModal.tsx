@@ -28,6 +28,7 @@ export const PaywallModal: React.FC = () => {
 
   const [selectedPlan, setSelectedPlan] =
     useState<Exclude<PlanId, 'free'>>('pro_annual');
+  const [legalDoc, setLegalDoc] = useState<'privacy' | 'terms' | null>(null);
 
   if (!paywallVisible) return null;
 
@@ -152,10 +153,38 @@ export const PaywallModal: React.FC = () => {
                 <Text style={styles.footerLink}>Restore Purchases</Text>
               </TouchableOpacity>
               <Text style={{ color: '#CBD5E1' }}>•</Text>
-              <TouchableOpacity onPress={closePaywall}>
-                <Text style={styles.footerLink}>Keep Using Free Plan</Text>
+              <TouchableOpacity onPress={() => setLegalDoc('terms')}>
+                <Text style={styles.footerLink}>Terms of Use</Text>
+              </TouchableOpacity>
+              <Text style={{ color: '#CBD5E1' }}>•</Text>
+              <TouchableOpacity onPress={() => setLegalDoc('privacy')}>
+                <Text style={styles.footerLink}>Privacy Policy</Text>
               </TouchableOpacity>
             </View>
+
+            {legalDoc && (
+              <View style={styles.legalCard}>
+                <View style={styles.legalHeaderRow}>
+                  <Text style={styles.legalTitle}>
+                    {legalDoc === 'privacy'
+                      ? 'ParkCast Privacy Policy'
+                      : 'ParkCast Terms of Use (EULA)'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setLegalDoc(null)}>
+                    <Text style={styles.footerLink}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.legalBodyText}>
+                  {legalDoc === 'privacy'
+                    ? 'ParkCast respects your privacy. Photos and videos selected from your iPhone are streamed only to your paired car display and are never sold or shared with third parties. Subscription status is verified securely through Apple In-App Purchases (StoreKit) and RevenueCat.'
+                    : 'Safety First: Video playback on the car display is intended strictly for when your vehicle is safely parked. Never watch video while driving. Subscriptions automatically renew unless canceled at least 24 hours before the end of the current period in iPhone Settings -> Apple Account -> Subscriptions.'}
+                </Text>
+              </View>
+            )}
+
+            <Text style={styles.appleDisclosureText}>
+              Payment is charged to your Apple Account upon confirmation. Subscriptions renew automatically unless auto-renew is turned off at least 24 hours before the current period ends.
+            </Text>
           </ScrollView>
         </View>
       </View>
@@ -351,5 +380,36 @@ const styles = StyleSheet.create({
     color: BRAND.colors.accentBlue,
     fontSize: 13,
     fontWeight: '700',
+  },
+  legalCard: {
+    marginTop: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  legalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  legalTitle: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  legalBodyText: {
+    color: BRAND.colors.textSecondary,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  appleDisclosureText: {
+    marginTop: 12,
+    color: '#94A3B8',
+    fontSize: 10,
+    textAlign: 'center',
+    lineHeight: 14,
   },
 });

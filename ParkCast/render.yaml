@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: parkcast-car-relay
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PARKCAST_RELAY_PORT
+        value: 4848

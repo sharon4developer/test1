@@ -17,7 +17,7 @@ const path = require('path');
 const { execFile, spawn } = require('child_process');
 const { WebSocketServer } = require('ws');
 
-const PORT = Number(process.env.PARKCAST_RELAY_PORT || 4848);
+const PORT = Number(process.env.PORT || process.env.PARKCAST_RELAY_PORT || 4848);
 const rooms = new Map();
 const MEDIA_DIR = path.join(os.tmpdir(), 'parkcast-media');
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
@@ -31,17 +31,11 @@ let uxplayActive = false;
 function startWholePhoneAirPlayReceiver() {
   if (uxplayProcess) return;
   try {
-    // Pipe live iPhone AirPlay H.264 video frames through GStreamer jpegenc directly into
-    // /tmp/parkcast-media/live-mirror.jpg so http://<IP>:4848/car renders the live iPhone
-    // screen right inside the browser tab in real time!
-    const gstSink = `videoconvert ! jpegenc quality=75 ! multifilesink location=${LIVE_MIRROR_JPG}`;
-    const child = spawn(
-      'uxplay',
-      ['-n', 'ParkCast Car Display', '-nh', '-p', '-vs', gstSink],
-      {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      }
-    );
+    // Use -p so uxplay binds fixed ports (TCP 7000,7001,7100 and UDP 6000,6001,7011)
+    // and opens a clean native 60fps window when the iPhone connects via Control Center.
+    const child = spawn('uxplay', ['-n', 'ParkCast Car Display', '-nh', '-p'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     uxplayProcess = child;
     uxplayActive = true;
 
@@ -685,6 +679,20 @@ const server = http.createServer((req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.writeHead(200);
     res.end(CAR_RECEIVER_HTML);
+    return;
+  }
+
+  if (req.url === '/privacy') {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.writeHead(200);
+    res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ParkCast Privacy Policy</title></head><body style="font-family:sans-serif;max-width:680px;margin:40px auto;padding:0 20px;color:#0F172A;line-height:1.6"><h1>ParkCast Privacy Policy</h1><p>Effective Date: November 10, 2026</p><p>ParkCast ("we", "our", or "the App") respects your privacy. Photos and videos selected from your device are transmitted solely to your paired car screen receiver and are never sold or shared with third parties.</p><h3>Data We Collect</h3><ul><li><strong>Purchase &amp; Subscription Status:</strong> Processed securely by Apple In-App Purchases (StoreKit) and RevenueCat to unlock ParkCast Pro features.</li><li><strong>Temporary Media Relay:</strong> Photos or videos you choose to cast are temporarily buffered only for your active 4-digit Car Code session.</li></ul><h3>Contact</h3><p>For questions or support, contact support@parkcast.app.</p></body></html>`);
+    return;
+  }
+
+  if (req.url === '/terms') {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.writeHead(200);
+    res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ParkCast Terms of Use (EULA)</title></head><body style="font-family:sans-serif;max-width:680px;margin:40px auto;padding:0 20px;color:#0F172A;line-height:1.6"><h1>ParkCast Terms of Use (EULA)</h1><p>Effective Date: November 10, 2026</p><h3>1. Safety Notice (Parked Use Only)</h3><p>ParkCast is intended strictly for use while your vehicle is safely parked. Never watch video or interact with the app while driving.</p><h3>2. Subscriptions &amp; Billing</h3><p>ParkCast Pro is offered as a Monthly ($4.99/month), Yearly ($24.99/year with a 3-day free trial), or Lifetime ($49.99 one-time) purchase. Payment is charged to your Apple Account at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period in your iPhone Account Settings.</p></body></html>`);
     return;
   }
 
