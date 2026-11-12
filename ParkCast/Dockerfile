@@ -8,6 +8,7 @@ COPY package.json ./
 RUN npm install --omit=dev --legacy-peer-deps
 
 COPY server ./server
+COPY assets ./assets
 
 ENV PORT=4848
 ENV PARKCAST_RELAY_PORT=4848
