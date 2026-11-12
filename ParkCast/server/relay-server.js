@@ -79,6 +79,12 @@ function getLocalLanIp() {
   return '10.0.0.87';
 }
 
+function getPublicBaseUrl(req) {
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || `${getLocalLanIp()}:${PORT}`;
+  return `${proto}://${host}`;
+}
+
 function getOrCreateRoom(code) {
   const clean = String(code || '4829').trim();
   if (!rooms.has(clean)) {
@@ -788,12 +794,12 @@ const server = http.createServer((req, res) => {
     req.pipe(writeStream);
 
     writeStream.on('finish', () => {
-      const lanIp = getLocalLanIp();
+      const baseUrl = getPublicBaseUrl(req);
       if (isVideo) {
         console.log(`[iPhone Video Upload] Transcoding ${rawFilePath} to H.264 MP4...`);
         transcodeToBrowserMp4IfNeeded(rawFilePath, (finalPath, finalMime) => {
           uploadedMedia.set(id, { filePath: finalPath, mimeType: finalMime });
-          const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+          const publicUrl = `${baseUrl}/media/${id}`;
           console.log(`[iPhone Video Ready] Streaming at ${publicUrl}`);
           res.setHeader('Content-Type', 'application/json');
           res.writeHead(200);
@@ -801,7 +807,7 @@ const server = http.createServer((req, res) => {
         });
       } else {
         uploadedMedia.set(id, { filePath: rawFilePath, mimeType: 'image/jpeg' });
-        const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+        const publicUrl = `${baseUrl}/media/${id}`;
         console.log(`[iPhone Photo Ready] Displaying at ${publicUrl}`);
         res.setHeader('Content-Type', 'application/json');
         res.writeHead(200);
@@ -830,12 +836,12 @@ const server = http.createServer((req, res) => {
         const id = `media-${Date.now()}`;
         const rawPath = path.join(MEDIA_DIR, `${id}.${isVideo ? 'mov' : 'jpg'}`);
         fs.writeFileSync(rawPath, buffer);
-        const lanIp = getLocalLanIp();
+        const baseUrl = getPublicBaseUrl(req);
 
         if (isVideo) {
           transcodeToBrowserMp4IfNeeded(rawPath, (finalPath, finalMime) => {
             uploadedMedia.set(id, { filePath: finalPath, mimeType: finalMime });
-            const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+            const publicUrl = `${baseUrl}/media/${id}`;
             console.log(`[iPhone Video Upload] Saved & transcoded -> ${publicUrl}`);
             res.setHeader('Content-Type', 'application/json');
             res.writeHead(200);
@@ -843,7 +849,7 @@ const server = http.createServer((req, res) => {
           });
         } else {
           uploadedMedia.set(id, { filePath: rawPath, mimeType });
-          const publicUrl = `http://${lanIp}:${PORT}/media/${id}`;
+          const publicUrl = `${baseUrl}/media/${id}`;
           console.log(`[iPhone Photo Upload] Saved -> ${publicUrl}`);
           res.setHeader('Content-Type', 'application/json');
           res.writeHead(200);

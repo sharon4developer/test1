@@ -158,6 +158,46 @@ function detectDrmWarningForUrl(url: string | null): string | null {
   return null;
 }
 
+function isCloudHttpsHost(host: string): boolean {
+  const lower = host.toLowerCase();
+  return (
+    lower.startsWith('https://') ||
+    lower.startsWith('wss://') ||
+    lower.includes('.onrender.com') ||
+    lower.includes('.railway.app') ||
+    lower.includes('.fly.dev') ||
+    lower.includes('.ngrok') ||
+    lower.includes('.exp.direct')
+  );
+}
+
+function normalizeRelayEndpoint(rawHost: string): { httpBase: string; wsUrl: string; displayHost: string } {
+  const trimmed = rawHost.trim().replace(/\/+$/, '');
+  const cloudSsl = isCloudHttpsHost(trimmed);
+  const cleanHost = trimmed
+    .replace(/^wss?:\/\//i, '')
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/.*$/, '');
+
+  if (cloudSsl) {
+    return {
+      httpBase: `https://${cleanHost}`,
+      wsUrl: `wss://${cleanHost}`,
+      displayHost: cleanHost,
+    };
+  }
+
+  const hostWithPort = cleanHost.includes(':')
+    ? cleanHost
+    : `${cleanHost}:${BRAND.defaultRelayPort}`;
+
+  return {
+    httpBase: `http://${hostWithPort}`,
+    wsUrl: `ws://${hostWithPort}`,
+    displayHost: hostWithPort,
+  };
+}
+
 function detectInitialRelayHost(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
     return `${window.location.hostname}:${BRAND.defaultRelayPort}`;
@@ -245,10 +285,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Connect to WebSocket relay whenever relayHost, roomCode, or reconnectNonce changes
   useEffect(() => {
-    const cleanHost = relayHost.replace(/^ws:\/\//, '').replace(/^http:\/\//, '').trim();
-    const wsUrl = cleanHost.includes(':')
-      ? `ws://${cleanHost}`
-      : `ws://${cleanHost}:${BRAND.defaultRelayPort}`;
+    const { wsUrl } = normalizeRelayEndpoint(relayHost);
 
     let socket: WebSocket | null = null;
     try {
@@ -322,15 +359,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       );
     }
 
-    const cleanHost = relayHost
-      .replace(/^wss?:\/\//, '')
-      .replace(/^https?:\/\//, '')
-      .trim();
-    const httpBase = cleanHost.includes('.ngrok') || cleanHost.includes('.exp.direct')
-      ? `https://${cleanHost}`
-      : cleanHost.includes(':')
-      ? `http://${cleanHost}`
-      : `http://${cleanHost}:${BRAND.defaultRelayPort}`;
+    const { httpBase } = normalizeRelayEndpoint(relayHost);
 
     fetch(`${httpBase}/sync`, {
       method: 'POST',
@@ -365,19 +394,14 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const setRelayHost = useCallback((host: string) => {
     const trimmed = host.trim();
     if (!trimmed) return;
-    setRelayHostState(
-      trimmed.includes(':') ? trimmed : `${trimmed}:${BRAND.defaultRelayPort}`
-    );
+    setRelayHostState(normalizeRelayEndpoint(trimmed).displayHost);
   }, []);
 
   const connectToCarReceiver = useCallback(
     (code = '4829', vehicleName?: string, customRelayHost?: string) => {
       const cleanCode = code.trim() || '4829';
       if (customRelayHost && customRelayHost.trim()) {
-        const cleanHost = customRelayHost.trim();
-        setRelayHostState(
-          cleanHost.includes(':') ? cleanHost : `${cleanHost}:${BRAND.defaultRelayPort}`
-        );
+        setRelayHostState(normalizeRelayEndpoint(customRelayHost).displayHost);
       }
       setState((prev) => ({
         ...prev,
@@ -780,17 +804,11 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     async (uri: string, title: string, isVideo: boolean, base64Data?: string) => {
       let broadcastUri = uri;
 
-      const cleanHost = relayHost
-        .replace(/^wss?:\/\//, '')
-        .replace(/^https?:\/\//, '')
-        .trim();
-      const hostWithPort = cleanHost.includes(':')
-        ? cleanHost
-        : `${cleanHost}:${BRAND.defaultRelayPort}`;
+      const { httpBase } = normalizeRelayEndpoint(relayHost);
 
       if (base64Data) {
         try {
-          const resp = await fetch(`http://${hostWithPort}/upload`, {
+          const resp = await fetch(`${httpBase}/upload`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -813,7 +831,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
           const blob = await fileResp.blob();
           const ext = title.split('.').pop()?.toLowerCase() || (isVideo ? 'mov' : 'jpg');
           const uploadResp = await fetch(
-            `http://${hostWithPort}/upload-raw?video=${isVideo ? '1' : '0'}&ext=${ext}`,
+            `${httpBase}/upload-raw?video=${isVideo ? '1' : '0'}&ext=${ext}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/octet-stream' },
