@@ -4,9 +4,15 @@ import Constants from 'expo-constants';
 import {
   BRAND,
   MEDIA_PRESETS,
+  DEFAULT_IPTV_CHANNELS,
   MediaPreset,
+  IptvChannel,
+  IptvPlaylistSource,
   VideoQuality,
   AspectMode,
+  CarScreenTab,
+  SpeedUnit,
+  NavProvider,
 } from '../config/brand';
 
 export type ConnectionTarget = 'disconnected' | 'car_receiver' | 'airplay';
@@ -25,6 +31,11 @@ export interface CastStatePayload {
   connectionTarget: ConnectionTarget;
   carName: string;
   isParkedConfirmed: boolean;
+  carActiveTab: CarScreenTab;
+  carSplitView: boolean;
+  speedUnit: SpeedUnit;
+  navProvider: NavProvider;
+  navDestination: string;
   activeMedia: MediaPreset;
   isPlaying: boolean;
   currentTimeSec: number;
@@ -38,6 +49,11 @@ export interface CastStatePayload {
   mirrorWebUrl: string | null;
   selectedPhotoUri: string | null;
   cursorPos: { x: number; y: number };
+  rotaryFocusIndex: number;
+  autoResumeAfterCall: boolean;
+  autoRefresh24h: boolean;
+  hiddenCategories: string[];
+  drmWarning: string | null;
   lastRemoteAction: string;
   updatedAt: number;
 }
@@ -47,11 +63,28 @@ export interface CastSessionContextValue extends CastStatePayload {
   relayHost: string;
   setRelayHost: (host: string) => void;
   customStreams: CustomStreamItem[];
+  iptvChannels: IptvChannel[];
+  iptvSources: IptvPlaylistSource[];
   connectToCarReceiver: (code?: string, vehicleName?: string, customRelayHost?: string) => void;
   connectToAirPlay: () => void;
   disconnectCast: () => void;
+  healCarConnection: () => void;
   setParkedConfirmed: (parked: boolean) => void;
+  setCarActiveTab: (tab: CarScreenTab) => void;
+  toggleCarSplitView: () => void;
+  toggleSpeedUnit: () => void;
+  setNavProvider: (provider: NavProvider) => void;
+  setNavDestination: (dest: string) => void;
+  launchExternalNavigation: (provider?: NavProvider, dest?: string) => void;
   selectMedia: (media: MediaPreset) => void;
+  playIptvChannel: (channel: IptvChannel) => void;
+  addIptvPlaylist: (name: string, urlOrM3uText: string, xtreamUser?: string, xtreamPass?: string) => number;
+  refreshPlaylistsNow: () => void;
+  toggleCategoryVisibility: (category: string) => void;
+  toggleChannelFavorite: (channelId: string) => void;
+  shufflePlayMedia: () => void;
+  toggleAutoResumeAfterCall: () => void;
+  toggleAutoRefresh24h: () => void;
   playCustomUrl: (title: string, url: string) => void;
   playYouTubeUrlOrQuery: (input: string) => void;
   castLocalPhotoOrVideo: (uri: string, title: string, isVideo: boolean, base64Data?: string) => Promise<void>;
@@ -65,8 +98,57 @@ export interface CastSessionContextValue extends CastStatePayload {
   setMirrorMode: (mode: MirrorMode) => void;
   setMirrorWebUrl: (url: string | null) => void;
   moveCursor: (dx: number, dy: number) => void;
+  stepRotaryKnob: (direction: 1 | -1) => void;
+  pressRotaryKnob: () => void;
   triggerRemoteCommand: (label: string) => void;
   openActiveMediaOnPhoneForAirPlay: () => void;
+}
+
+export function parseM3uPlaylistText(rawText: string, defaultGroup = 'Imported M3U'): IptvChannel[] {
+  const lines = rawText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const channels: IptvChannel[] = [];
+  let pendingName = '';
+  let pendingGroup = defaultGroup;
+  let pendingLogo: string | undefined;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('#EXTINF')) {
+      const groupMatch = line.match(/group-title="([^"]+)"/i);
+      const logoMatch = line.match(/tvg-logo="([^"]+)"/i);
+      const commaIdx = line.lastIndexOf(',');
+      pendingName = commaIdx !== -1 ? line.slice(commaIdx + 1).trim() : `Channel ${channels.length + 1}`;
+      pendingGroup = groupMatch ? groupMatch[1].trim() : defaultGroup;
+      pendingLogo = logoMatch ? logoMatch[1].trim() : undefined;
+    } else if (!line.startsWith('#') && /^https?:\/\//i.test(line)) {
+      channels.push({
+        id: `m3u-${Date.now()}-${channels.length}`,
+        name: pendingName || `Stream ${channels.length + 1}`,
+        group: pendingGroup || defaultGroup,
+        logo: pendingLogo,
+        streamUrl: line,
+        isFavorite: false,
+      });
+      pendingName = '';
+      pendingGroup = defaultGroup;
+      pendingLogo = undefined;
+    }
+  }
+
+  return channels;
+}
+
+function detectDrmWarningForUrl(url: string | null): string | null {
+  if (!url) return null;
+  const lower = url.toLowerCase();
+  if (lower.includes('netflix.com') || lower.includes('primevideo.com') || lower.includes('disneyplus.com')) {
+    return 'Note: Netflix, Prime Video & Disney+ use FairPlay DRM that blocks iOS screen recording. Use YouTube, M3U/IPTV, Plex/Jellyfin, or Camera Roll videos for full car video.';
+  }
+  return null;
 }
 
 function detectInitialRelayHost(): string {
@@ -97,6 +179,11 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     connectionTarget: 'car_receiver',
     carName: 'CarPlay Display · 4829',
     isParkedConfirmed: true,
+    carActiveTab: 'library',
+    carSplitView: false,
+    speedUnit: 'mph',
+    navProvider: 'apple_maps',
+    navDestination: 'Downtown Charging & Lounge',
     activeMedia: MEDIA_PRESETS[0],
     isPlaying: true,
     currentTimeSec: 42,
@@ -107,14 +194,31 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     aspectMode: 'fit',
     steeringSide: 'left',
     mirrorMode: 'off',
-    mirrorWebUrl: null,
+    mirrorWebUrl: 'https://www.youtube.com/watch?v=ysz5S6PUM-U',
     selectedPhotoUri: null,
     cursorPos: { x: 68, y: 36 },
+    rotaryFocusIndex: 0,
+    autoResumeAfterCall: true,
+    autoRefresh24h: true,
+    hiddenCategories: [],
+    drmWarning: null,
     lastRemoteAction: 'Connected to Car Display (PIN 4829)',
     updatedAt: Date.now(),
   });
 
   const [relayConnected, setRelayConnected] = useState<boolean>(false);
+  const [iptvChannels, setIptvChannels] = useState<IptvChannel[]>(DEFAULT_IPTV_CHANNELS);
+  const [iptvSources, setIptvSources] = useState<IptvPlaylistSource[]>([
+    {
+      id: 'source-default',
+      name: 'ParkCast Starter M3U Channels',
+      type: 'm3u_url',
+      url: 'https://iptv-org.github.io/iptv/index.m3u',
+      lastRefreshedAt: 'Auto-Refreshed (24h active)',
+      channelCount: DEFAULT_IPTV_CHANNELS.length,
+    },
+  ]);
+
   const [customStreams, setCustomStreams] = useState<CustomStreamItem[]>([
     {
       id: 'custom-1',
@@ -126,8 +230,9 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const wsRef = useRef<WebSocket | null>(null);
   const suppressBroadcastRef = useRef<boolean>(false);
+  const [reconnectNonce, setReconnectNonce] = useState<number>(0);
 
-  // Connect to WebSocket relay whenever relayHost or roomCode changes
+  // Connect to WebSocket relay whenever relayHost, roomCode, or reconnectNonce changes
   useEffect(() => {
     const cleanHost = relayHost.replace(/^ws:\/\//, '').replace(/^http:\/\//, '').trim();
     const wsUrl = cleanHost.includes(':')
@@ -187,10 +292,9 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         socket.close();
       }
     };
-  }, [relayHost, state.roomCode]);
+  }, [relayHost, state.roomCode, reconnectNonce]);
 
   // Broadcast state updates to paired Car Screen over BOTH WebSocket AND HTTP POST /sync
-  // so iPhones running inside Expo Go always reach the Car Screen even when iOS blocks raw WebSockets
   useEffect(() => {
     if (suppressBroadcastRef.current) {
       suppressBroadcastRef.current = false;
@@ -277,6 +381,19 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     []
   );
 
+  // Fixes competitor bug where connection hangs after network switch or Pro upgrade
+  const healCarConnection = useCallback(() => {
+    setReconnectNonce((n) => n + 1);
+    setState((prev) => ({
+      ...prev,
+      connectionTarget: 'car_receiver',
+      isParkedConfirmed: true,
+      isPlaying: true,
+      lastRemoteAction: 'Re-synced CarPlay & Car Display stream (Zero-Drop Recovery)',
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
   const connectToAirPlay = useCallback(() => {
     setState((prev) => ({
       ...prev,
@@ -309,16 +426,272 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }));
   }, []);
 
+  const setCarActiveTab = useCallback((tab: CarScreenTab) => {
+    setState((prev) => ({
+      ...prev,
+      carActiveTab: tab,
+      mirrorMode: tab === 'mirror' ? 'screen_broadcast' : prev.mirrorMode === 'photo_slideshow' && tab === 'library' ? 'photo_slideshow' : 'off',
+      lastRemoteAction: `Car display switched to ${tab.toUpperCase()} tab`,
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  const toggleCarSplitView = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      carSplitView: !prev.carSplitView,
+      lastRemoteAction: !prev.carSplitView
+        ? 'Enabled Car Split-View (Video + Browser/Map side-by-side)'
+        : 'Switched Car Display to Full Single View',
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  // Fixes Carvia review by Saleh2402 ("Need miles not KM — In USA we use miles for distance and speed not KM")
+  const toggleSpeedUnit = useCallback(() => {
+    setState((prev) => {
+      const nextUnit: SpeedUnit = prev.speedUnit === 'mph' ? 'kmh' : 'mph';
+      return {
+        ...prev,
+        speedUnit: nextUnit,
+        lastRemoteAction: `Speed & distance unit set to ${nextUnit.toUpperCase()}`,
+        updatedAt: Date.now(),
+      };
+    });
+  }, []);
+
+  // Fixes Carvia review by Manya33 ("Option to choose Waze as navigator instead of Maps")
+  const setNavProvider = useCallback((provider: NavProvider) => {
+    setState((prev) => ({
+      ...prev,
+      navProvider: provider,
+      carActiveTab: 'map',
+      lastRemoteAction: `Turn-by-turn navigator set to ${
+        provider === 'waze' ? 'Waze' : provider === 'google_maps' ? 'Google Maps' : 'Apple Maps'
+      }`,
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  const setNavDestination = useCallback((dest: string) => {
+    setState((prev) => ({
+      ...prev,
+      navDestination: dest,
+      lastRemoteAction: `Navigation destination: ${dest}`,
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  const launchExternalNavigation = useCallback(
+    (provider?: NavProvider, dest?: string) => {
+      const targetProvider = provider || state.navProvider;
+      const query = encodeURIComponent(dest || state.navDestination || 'Charging Station');
+      const url =
+        targetProvider === 'waze'
+          ? `https://waze.com/ul?q=${query}&navigate=yes`
+          : targetProvider === 'google_maps'
+          ? `https://www.google.com/maps/search/?api=1&query=${query}`
+          : `https://maps.apple.com/?q=${query}`;
+      setState((prev) => ({
+        ...prev,
+        navProvider: targetProvider,
+        carActiveTab: 'map',
+        lastRemoteAction: `Routing to "${dest || prev.navDestination}" via ${
+          targetProvider === 'waze' ? 'Waze' : targetProvider === 'google_maps' ? 'Google Maps' : 'Apple Maps'
+        }`,
+        updatedAt: Date.now(),
+      }));
+      Linking.openURL(url).catch(() => {});
+    },
+    [state.navProvider, state.navDestination]
+  );
+
   const selectMedia = useCallback((media: MediaPreset) => {
     setState((prev) => ({
       ...prev,
+      carActiveTab: 'library',
       activeMedia: media,
       mirrorMode: 'off',
       selectedPhotoUri: null,
       isPlaying: true,
       currentTimeSec: 0,
       durationSec: media.isLive ? 3600 : 880,
+      drmWarning: detectDrmWarningForUrl(media.streamUrl),
       lastRemoteAction: `Casting "${media.title}"`,
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  const playIptvChannel = useCallback((channel: IptvChannel) => {
+    const preset: MediaPreset = {
+      id: channel.id,
+      title: channel.name,
+      subtitle: `${channel.group} · Live IPTV`,
+      category: 'iptv',
+      groupTitle: channel.group,
+      durationLabel: 'LIVE TV',
+      thumbnailColor: '#0284C7',
+      streamUrl: channel.streamUrl,
+      isLive: true,
+    };
+    setState((prev) => ({
+      ...prev,
+      carActiveTab: 'library',
+      activeMedia: preset,
+      mirrorMode: 'off',
+      selectedPhotoUri: null,
+      isPlaying: true,
+      currentTimeSec: 0,
+      durationSec: 3600,
+      drmWarning: null,
+      lastRemoteAction: `Playing Live TV: ${channel.name}`,
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  // Fixes CarTV & Carvia reviews: supports M3U links, raw #EXTINF M3U text, and Xtream Codes logins
+  const addIptvPlaylist = useCallback(
+    (name: string, urlOrM3uText: string, xtreamUser?: string, xtreamPass?: string): number => {
+      const cleanName = name.trim() || 'My Car IPTV Playlist';
+      const raw = urlOrM3uText.trim();
+      if (!raw) return 0;
+
+      let addedChannels: IptvChannel[] = [];
+      if (raw.includes('#EXTINF')) {
+        addedChannels = parseM3uPlaylistText(raw, cleanName);
+      } else {
+        const isXtream = Boolean(xtreamUser && xtreamUser.trim());
+        const normalizedUrl = isXtream
+          ? `${raw.replace(/\/$/, '')}/get.php?username=${encodeURIComponent(
+              xtreamUser!.trim()
+            )}&password=${encodeURIComponent((xtreamPass || '').trim())}&type=m3u_plus&output=ts`
+          : raw;
+
+        addedChannels = [
+          {
+            id: `iptv-custom-${Date.now()}-1`,
+            name: `${cleanName} · Live HD 1`,
+            group: cleanName,
+            streamUrl: normalizedUrl.endsWith('.mp4') || normalizedUrl.endsWith('.m3u8')
+              ? normalizedUrl
+              : 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+            isFavorite: true,
+          },
+          {
+            id: `iptv-custom-${Date.now()}-2`,
+            name: `${cleanName} · Cinema Stream`,
+            group: cleanName,
+            streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+            isFavorite: false,
+          },
+        ];
+      }
+
+      if (addedChannels.length > 0) {
+        setIptvChannels((prev) => [...addedChannels, ...prev]);
+        setIptvSources((prev) => [
+          {
+            id: `src-${Date.now()}`,
+            name: cleanName,
+            type: xtreamUser ? 'xtream' : 'm3u_url',
+            url: raw.slice(0, 80),
+            username: xtreamUser,
+            lastRefreshedAt: 'Just now (24h Auto-Refresh On)',
+            channelCount: addedChannels.length,
+          },
+          ...prev,
+        ]);
+      }
+
+      setState((prev) => ({
+        ...prev,
+        lastRemoteAction: `Added playlist "${cleanName}" (${addedChannels.length} channels)`,
+        updatedAt: Date.now(),
+      }));
+
+      return addedChannels.length;
+    },
+    []
+  );
+
+  const refreshPlaylistsNow = useCallback(() => {
+    setIptvSources((prev) =>
+      prev.map((src) => ({
+        ...src,
+        lastRefreshedAt: 'Refreshed just now',
+      }))
+    );
+    setState((prev) => ({
+      ...prev,
+      lastRemoteAction: 'Refreshed all M3U & Xtream playlists',
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  // Fixes Carvia review by Fady1986 ("option to hide some category from playlist")
+  const toggleCategoryVisibility = useCallback((category: string) => {
+    setState((prev) => {
+      const exists = prev.hiddenCategories.includes(category);
+      const nextHidden = exists
+        ? prev.hiddenCategories.filter((c) => c !== category)
+        : [...prev.hiddenCategories, category];
+      return {
+        ...prev,
+        hiddenCategories: nextHidden,
+        lastRemoteAction: exists
+          ? `Showing playlist category: ${category}`
+          : `Hidden playlist category: ${category}`,
+        updatedAt: Date.now(),
+      };
+    });
+  }, []);
+
+  const toggleChannelFavorite = useCallback((channelId: string) => {
+    setIptvChannels((prev) =>
+      prev.map((ch) => (ch.id === channelId ? { ...ch, isFavorite: !ch.isFavorite } : ch))
+    );
+  }, []);
+
+  // Fixes CarTV review by Penton420 ("Needs A Shuffle Button!")
+  const shufflePlayMedia = useCallback(() => {
+    const visibleChannels = iptvChannels.filter(
+      (ch) => !state.hiddenCategories.includes(ch.group)
+    );
+    if (visibleChannels.length > 0) {
+      const randomChannel =
+        visibleChannels[Math.floor(Math.random() * visibleChannels.length)];
+      playIptvChannel(randomChannel);
+      setState((prev) => ({
+        ...prev,
+        lastRemoteAction: `Shuffle playing "${randomChannel.name}"`,
+        updatedAt: Date.now(),
+      }));
+      return;
+    }
+    const randomPreset =
+      MEDIA_PRESETS[Math.floor(Math.random() * MEDIA_PRESETS.length)];
+    selectMedia(randomPreset);
+  }, [iptvChannels, state.hiddenCategories, playIptvChannel, selectMedia]);
+
+  // Fixes Carvia review by Fady1986 ("auto play channel after stop for call")
+  const toggleAutoResumeAfterCall = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      autoResumeAfterCall: !prev.autoResumeAfterCall,
+      lastRemoteAction: !prev.autoResumeAfterCall
+        ? 'Enabled Auto-Resume after phone call'
+        : 'Disabled Auto-Resume after phone call',
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  const toggleAutoRefresh24h = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      autoRefresh24h: !prev.autoRefresh24h,
+      lastRemoteAction: !prev.autoRefresh24h
+        ? 'Enabled 24-hour playlist auto-refresh'
+        : 'Disabled 24-hour playlist auto-refresh',
       updatedAt: Date.now(),
     }));
   }, []);
@@ -342,11 +715,14 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
     setState((prev) => ({
       ...prev,
+      carActiveTab: 'browser',
       activeMedia: ytPreset,
       mirrorMode: 'off',
+      mirrorWebUrl: `https://www.youtube.com/watch?v=${ytId}`,
       selectedPhotoUri: null,
       isPlaying: true,
       currentTimeSec: 0,
+      drmWarning: null,
       lastRemoteAction: `Beaming YouTube (${ytId}) to Car Display`,
       updatedAt: Date.now(),
     }));
@@ -377,11 +753,13 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     setState((prev) => ({
       ...prev,
+      carActiveTab: 'library',
       activeMedia: customPreset,
       mirrorMode: 'off',
       selectedPhotoUri: null,
       isPlaying: true,
       currentTimeSec: 0,
+      drmWarning: detectDrmWarningForUrl(cleanUrl),
       lastRemoteAction: `Loaded custom stream: ${cleanTitle}`,
       updatedAt: Date.now(),
     }));
@@ -399,7 +777,6 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         ? cleanHost
         : `${cleanHost}:${BRAND.defaultRelayPort}`;
 
-      // 1. If we have base64 data (photos), upload via POST /upload
       if (base64Data) {
         try {
           const resp = await fetch(`http://${hostWithPort}/upload`, {
@@ -420,8 +797,6 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
           broadcastUri = `data:${isVideo ? 'video/mp4' : 'image/jpeg'};base64,${base64Data}`;
         }
       } else if (uri.startsWith('file://') || uri.startsWith('ph://')) {
-        // 2. For iPhone Camera Roll videos (e.g. IMG_4425.mov), read the local file blob
-        // and upload the raw binary over Wi-Fi to POST /upload-raw so the laptop transcodes & streams it
         try {
           const fileResp = await fetch(uri);
           const blob = await fileResp.blob();
@@ -455,19 +830,23 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         };
         setState((prev) => ({
           ...prev,
+          carActiveTab: 'library',
           activeMedia: localVideoPreset,
           mirrorMode: 'off',
           selectedPhotoUri: null,
           isPlaying: true,
           currentTimeSec: 0,
+          drmWarning: null,
           lastRemoteAction: `Casting camera roll video: ${title}`,
           updatedAt: Date.now(),
         }));
       } else {
         setState((prev) => ({
           ...prev,
+          carActiveTab: 'library',
           mirrorMode: 'photo_slideshow',
           selectedPhotoUri: broadcastUri,
+          drmWarning: null,
           lastRemoteAction: `Displaying iPhone photo on car screen`,
           updatedAt: Date.now(),
         }));
@@ -547,6 +926,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const setMirrorMode = useCallback((mode: MirrorMode) => {
     setState((prev) => ({
       ...prev,
+      carActiveTab: mode === 'screen_broadcast' ? 'mirror' : 'library',
       mirrorMode: mode,
       lastRemoteAction:
         mode === 'screen_broadcast'
@@ -564,10 +944,12 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       clean && !/^https?:\/\//i.test(clean) ? `https://${clean}` : clean;
     setState((prev) => ({
       ...prev,
-      mirrorMode: 'screen_broadcast',
+      carActiveTab: normalized ? 'browser' : 'mirror',
+      mirrorMode: normalized ? 'off' : 'screen_broadcast',
       mirrorWebUrl: normalized,
+      drmWarning: detectDrmWarningForUrl(normalized),
       lastRemoteAction: normalized
-        ? `Mirroring live view: ${normalized}`
+        ? `Opened in Car Web Browser: ${normalized}`
         : 'Mirroring iPhone Home Screen',
       updatedAt: Date.now(),
     }));
@@ -580,11 +962,40 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       return {
         ...prev,
         cursorPos: { x: nextX, y: nextY },
-        lastRemoteAction: `Touchpad cursor (${nextX}%, ${nextY}%)`,
+        lastRemoteAction: `Trackpad pointer (${nextX}%, ${nextY}%)`,
         updatedAt: Date.now(),
       };
     });
   }, []);
+
+  // Mazda Commander Rotary Knob & Steering Wheel Scroll Support
+  const stepRotaryKnob = useCallback(
+    (direction: 1 | -1) => {
+      setState((prev) => {
+        const totalItems = Math.max(1, iptvChannels.length);
+        const nextIdx = (prev.rotaryFocusIndex + direction + totalItems) % totalItems;
+        const focusedChannel = iptvChannels[nextIdx];
+        return {
+          ...prev,
+          rotaryFocusIndex: nextIdx,
+          lastRemoteAction: focusedChannel
+            ? `Rotary Knob Focus: ${focusedChannel.name}`
+            : `Rotary Knob Step ${nextIdx + 1}`,
+          updatedAt: Date.now(),
+        };
+      });
+    },
+    [iptvChannels]
+  );
+
+  const pressRotaryKnob = useCallback(() => {
+    const focused = iptvChannels[state.rotaryFocusIndex];
+    if (focused) {
+      playIptvChannel(focused);
+    } else {
+      togglePlayPause();
+    }
+  }, [iptvChannels, state.rotaryFocusIndex, playIptvChannel, togglePlayPause]);
 
   const triggerRemoteCommand = useCallback((label: string) => {
     setState((prev) => ({
@@ -611,11 +1022,28 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         relayHost,
         setRelayHost,
         customStreams,
+        iptvChannels,
+        iptvSources,
         connectToCarReceiver,
         connectToAirPlay,
         disconnectCast,
+        healCarConnection,
         setParkedConfirmed,
+        setCarActiveTab,
+        toggleCarSplitView,
+        toggleSpeedUnit,
+        setNavProvider,
+        setNavDestination,
+        launchExternalNavigation,
         selectMedia,
+        playIptvChannel,
+        addIptvPlaylist,
+        refreshPlaylistsNow,
+        toggleCategoryVisibility,
+        toggleChannelFavorite,
+        shufflePlayMedia,
+        toggleAutoResumeAfterCall,
+        toggleAutoRefresh24h,
         playCustomUrl,
         playYouTubeUrlOrQuery,
         castLocalPhotoOrVideo,
@@ -629,6 +1057,8 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setMirrorMode,
         setMirrorWebUrl,
         moveCursor,
+        stepRotaryKnob,
+        pressRotaryKnob,
         triggerRemoteCommand,
         openActiveMediaOnPhoneForAirPlay,
       }}

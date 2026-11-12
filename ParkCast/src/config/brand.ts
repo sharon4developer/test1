@@ -4,6 +4,12 @@ export type VideoQuality = '480p' | '720p' | '1080p' | '4K';
 
 export type AspectMode = 'fit' | 'fill' | 'cinema';
 
+export type CarScreenTab = 'library' | 'browser' | 'mirror' | 'map';
+
+export type SpeedUnit = 'mph' | 'kmh';
+
+export type NavProvider = 'apple_maps' | 'waze' | 'google_maps';
+
 export interface PricingPlan {
   id: Exclude<PlanId, 'free'>;
   name: string;
@@ -21,6 +27,7 @@ export interface MediaPreset {
   title: string;
   subtitle: string;
   category: 'youtube' | 'cinema' | 'iptv' | 'local';
+  groupTitle?: string;
   durationLabel: string;
   thumbnailColor: string;
   streamUrl: string;
@@ -29,10 +36,29 @@ export interface MediaPreset {
   isLive?: boolean;
 }
 
+export interface IptvChannel {
+  id: string;
+  name: string;
+  group: string;
+  logo?: string;
+  streamUrl: string;
+  isFavorite?: boolean;
+}
+
+export interface IptvPlaylistSource {
+  id: string;
+  name: string;
+  type: 'm3u_url' | 'xtream' | 'jellyfin';
+  url: string;
+  username?: string;
+  lastRefreshedAt: string;
+  channelCount: number;
+}
+
 export const BRAND = {
   appName: 'ParkCast',
-  tagline: 'Watch Videos & Photos on Your Car Screen',
-  version: '1.1.0',
+  tagline: 'Watch Videos, Live TV & Mirror on Your Car Screen',
+  version: '1.2.0',
   defaultRelayPort: 4848,
   freeLimits: {
     maxSessionSeconds: 15 * 60, // 15 minutes per free cast session
@@ -97,14 +123,24 @@ export const PRICING_PLANS: PricingPlan[] = [
 
 export const FEATURE_COMPARISON = [
   {
-    feature: 'Connect to Car Screen',
+    feature: 'Works in Every CarPlay Car (iOS 27.2+ Ready)',
     free: 'Included',
     pro: 'Included',
   },
   {
-    feature: 'Phone Photos on Car Screen',
-    free: 'Unlimited',
-    pro: 'Unlimited',
+    feature: 'Phone Photos & M3U / Xtream IPTV Player',
+    free: 'Included',
+    pro: 'Unlimited + Auto-Refresh',
+  },
+  {
+    feature: 'Car Web Browser + iPhone Trackpad',
+    free: 'Included',
+    pro: 'Full Screen + Split-View',
+  },
+  {
+    feature: 'Turn-by-Turn Nav (Apple Maps, Waze, Google)',
+    free: 'MPH & KM/H',
+    pro: 'Split-Screen Beside Video',
   },
   {
     feature: 'Video Quality',
@@ -117,19 +153,44 @@ export const FEATURE_COMPARISON = [
     pro: 'Unlimited Time',
   },
   {
-    feature: 'Phone Videos from Camera Roll',
-    free: '3 Videos / day',
-    pro: 'Unlimited Videos',
-  },
-  {
-    feature: 'Live Phone Screen Mirroring',
+    feature: 'Live Whole-Phone Screen Mirroring (60fps)',
     free: 'Pro Only',
     pro: 'Included',
   },
+];
+
+export const DEFAULT_IPTV_CHANNELS: IptvChannel[] = [
   {
-    feature: 'Widescreen Full-Fill Zoom',
-    free: 'Standard Fit',
-    pro: 'Full Screen & Widescreen',
+    id: 'iptv-redbull-tv',
+    name: 'Red Bull Motorsport Live',
+    group: 'Sports & Racing',
+    streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',
+    isFavorite: true,
+  },
+  {
+    id: 'iptv-scenic-alps',
+    name: 'Alps 4K Nature Lounge',
+    group: 'Relax & Ambience',
+    streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    isFavorite: true,
+  },
+  {
+    id: 'iptv-sintel-cinema',
+    name: 'Open Cinema HD · Sintel',
+    group: 'Movies & Cinema',
+    streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+  },
+  {
+    id: 'iptv-scifi-tears',
+    name: 'Sci-Fi Channel · Tears of Steel',
+    group: 'Movies & Cinema',
+    streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+  },
+  {
+    id: 'iptv-kids-bunny',
+    name: 'Family Cartoons · Big Buck Bunny',
+    group: 'Kids & Family',
+    streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
   },
 ];
 
@@ -139,6 +200,7 @@ export const MEDIA_PRESETS: MediaPreset[] = [
     title: 'Swiss Alps Scenic Drive',
     subtitle: 'Relaxing mountain drive video',
     category: 'youtube',
+    groupTitle: 'Relax & Ambience',
     durationLabel: '12 min',
     thumbnailColor: '#2563EB',
     streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
@@ -149,6 +211,7 @@ export const MEDIA_PRESETS: MediaPreset[] = [
     title: 'Sintel (Animated Short Movie)',
     subtitle: 'Family adventure movie',
     category: 'cinema',
+    groupTitle: 'Movies & Cinema',
     durationLabel: '15 min',
     thumbnailColor: '#7C3AED',
     streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
@@ -158,6 +221,7 @@ export const MEDIA_PRESETS: MediaPreset[] = [
     title: 'Tears of Steel (Sci-Fi Short)',
     subtitle: 'Widescreen sci-fi movie',
     category: 'cinema',
+    groupTitle: 'Movies & Cinema',
     durationLabel: '12 min',
     thumbnailColor: '#059669',
     streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
@@ -167,6 +231,7 @@ export const MEDIA_PRESETS: MediaPreset[] = [
     title: 'GT Endurance Racing Highlights',
     subtitle: 'Full HD 1080p Track Feed',
     category: 'iptv',
+    groupTitle: 'Sports & Racing',
     durationLabel: 'HD PRO',
     thumbnailColor: '#EA580C',
     streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',

@@ -26,10 +26,9 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
   onBackToDashboard,
 }) => {
   const {
-    isPro,
-    openPaywall,
     canUseQuality,
     canUseAspectMode,
+    openPaywall,
   } = useSubscription();
 
   const {
@@ -44,6 +43,9 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
     aspectMode,
     mirrorMode,
     mirrorWebUrl,
+    cursorPos,
+    rotaryFocusIndex,
+    iptvChannels,
     togglePlayPause,
     seekBySeconds,
     setVolumeLevel,
@@ -52,11 +54,15 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
     setAspectRatioMode,
     setMirrorMode,
     setMirrorWebUrl,
+    playYouTubeUrlOrQuery,
     moveCursor,
+    stepRotaryKnob,
+    pressRotaryKnob,
     triggerRemoteCommand,
   } = useCastSession();
 
   const [mirrorUrlInput, setMirrorUrlInput] = useState(mirrorWebUrl || '');
+  const [ytQuickSearch, setYtQuickSearch] = useState('');
 
   const formatTime = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -79,6 +85,9 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
     }
     setAspectRatioMode(mode);
   };
+
+  const focusedChannelName =
+    iptvChannels[rotaryFocusIndex]?.name || activeMedia.title;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -239,12 +248,63 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
         </View>
       </View>
 
-      {/* Simple Car Screen Directional Pad */}
+      {/* Interactive iPhone Trackpad + YouTube Touch Bridge + Mazda Rotary Dial */}
       <View style={styles.settingCard}>
-        <Text style={styles.settingTitle}>Car Screen Pointer</Text>
-        <Text style={styles.settingSub}>
-          Move the pointer on your car screen and tap Select
+        <Text style={styles.settingTitle}>
+          Car Browser Trackpad & Mazda Rotary Dial
         </Text>
+        <Text style={styles.settingSub}>
+          Control YouTube, web pages, and channels on your car screen ({cursorPos.x}%, {cursorPos.y}%)
+        </Text>
+
+        {/* Direct YouTube Search & Touch Controls (Fixes Carvia YouTube touch complaint) */}
+        <View style={styles.ytTouchBridgeBox}>
+          <Text style={styles.ytBridgeLabel}>
+            YouTube Car Screen Touch & Keyboard Controls
+          </Text>
+          <View style={styles.urlRow}>
+            <TextInput
+              style={styles.urlInput}
+              placeholder="Type on iPhone keyboard for Car YouTube..."
+              placeholderTextColor="#94A3B8"
+              value={ytQuickSearch}
+              onChangeText={setYtQuickSearch}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              testID="yt-keyboard-send-btn"
+              style={styles.urlGoBtn}
+              onPress={() => {
+                playYouTubeUrlOrQuery(ytQuickSearch || 'https://youtu.be/ysz5S6PUM-U');
+                setYtQuickSearch('');
+              }}
+            >
+              <Text style={styles.urlGoBtnText}>Play YT</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.ytQuickActionsRow}>
+            <TouchableOpacity
+              style={styles.ytQuickBtn}
+              onPress={() => triggerRemoteCommand('YouTube Fullscreen Toggle')}
+            >
+              <Text style={styles.ytQuickBtnText}>⛶ Fullscreen YT</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.ytQuickBtn}
+              onPress={() => moveCursor(0, 14)}
+            >
+              <Text style={styles.ytQuickBtnText}>⇊ Scroll Page</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.ytQuickBtn}
+              onPress={() => triggerRemoteCommand('Click at Pointer')}
+            >
+              <Text style={styles.ytQuickBtnText}>👆 Tap Video</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Directional Trackpad Pad */}
         <View style={styles.dpadWrap}>
           <TouchableOpacity
             style={styles.dpadBtn}
@@ -279,6 +339,36 @@ export const PlayerRemoteScreen: React.FC<PlayerRemoteScreenProps> = ({
           >
             <Text style={styles.dpadText}>▼ Down</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Mazda Commander Rotary Knob Bar */}
+        <View style={styles.rotaryCard}>
+          <Text style={styles.rotaryTitle}>
+            Mazda Rotary Knob Focus: {focusedChannelName}
+          </Text>
+          <View style={styles.rotaryBtnRow}>
+            <TouchableOpacity
+              testID="rotary-left-btn"
+              style={styles.rotaryStepBtn}
+              onPress={() => stepRotaryKnob(-1)}
+            >
+              <Text style={styles.rotaryStepText}>↺ Rotate Left</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="rotary-press-btn"
+              style={styles.rotaryPressBtn}
+              onPress={pressRotaryKnob}
+            >
+              <Text style={styles.rotaryPressText}>● Press Knob</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="rotary-right-btn"
+              style={styles.rotaryStepBtn}
+              onPress={() => stepRotaryKnob(1)}
+            >
+              <Text style={styles.rotaryStepText}>Rotate Right ↻</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {mirrorMode === 'screen_broadcast' && (
@@ -514,6 +604,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 12,
   },
+  ytTouchBridgeBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
+  },
+  ytBridgeLabel: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  ytQuickActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  ytQuickBtn: {
+    flex: 1,
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  ytQuickBtnText: {
+    color: '#1D4ED8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   pillRow: {
     flexDirection: 'row',
     gap: 8,
@@ -572,6 +695,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
+  rotaryCard: {
+    marginTop: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  rotaryTitle: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  rotaryBtnRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  rotaryStepBtn: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 9,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  rotaryStepText: {
+    color: BRAND.colors.textPrimary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  rotaryPressBtn: {
+    flex: 1,
+    backgroundColor: '#10B981',
+    paddingVertical: 9,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  rotaryPressText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
   mirrorBox: {
     marginTop: 14,
     paddingTop: 14,
@@ -620,7 +788,7 @@ const styles = StyleSheet.create({
   },
   urlInput: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     color: BRAND.colors.textPrimary,
     borderRadius: 10,
     paddingHorizontal: 12,

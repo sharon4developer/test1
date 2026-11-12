@@ -181,6 +181,8 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       <span class="pin-box" id="pinDisplay">Car Code: 4829</span>
     </div>
     <div class="badges">
+      <span class="badge" id="carTabBadge">LIBRARY</span>
+      <span class="badge" id="speedUnitBadge">MPH</span>
       <span class="badge" id="qualityBadge">480p</span>
       <span class="badge" id="aspectBadge">FIT</span>
       <span class="badge" id="volBadge">VOL 85%</span>
@@ -309,6 +311,8 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       document.getElementById('qualityBadge').textContent = s.quality || '480p';
       document.getElementById('aspectBadge').textContent = (s.aspectMode || 'fit').toUpperCase();
       document.getElementById('volBadge').textContent = s.isMuted ? 'MUTED' : ('VOL ' + (s.volume ?? 85) + '%');
+      document.getElementById('carTabBadge').textContent = ((s.carActiveTab || 'library') + (s.carSplitView ? ' + SPLIT' : '')).toUpperCase();
+      document.getElementById('speedUnitBadge').textContent = (s.speedUnit || 'mph').toUpperCase();
       document.getElementById('lastActionBadge').textContent = s.lastRemoteAction || 'Synced with iPhone';
 
       if (s.cursorPos) {

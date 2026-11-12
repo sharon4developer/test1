@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import { BRAND } from '../config/brand';
+import { BRAND, CarScreenTab } from '../config/brand';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useCastSession } from '../context/CastSessionContext';
 
@@ -23,6 +23,11 @@ export const CarReceiverScreen: React.FC = () => {
     roomCode,
     connectionTarget,
     isParkedConfirmed,
+    carActiveTab,
+    carSplitView,
+    speedUnit,
+    navProvider,
+    navDestination,
     activeMedia,
     isPlaying,
     currentTimeSec,
@@ -36,6 +41,9 @@ export const CarReceiverScreen: React.FC = () => {
     selectedPhotoUri,
     cursorPos,
     lastRemoteAction,
+    setCarActiveTab,
+    toggleCarSplitView,
+    toggleSpeedUnit,
     togglePlayPause,
     seekBySeconds,
     setAspectRatioMode,
@@ -48,6 +56,16 @@ export const CarReceiverScreen: React.FC = () => {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
+  const navProviderName =
+    navProvider === 'waze'
+      ? 'Waze'
+      : navProvider === 'google_maps'
+      ? 'Google Maps'
+      : 'Apple Maps';
+
+  const distanceDisplay = speedUnit === 'mph' ? '2.4 mi' : '3.9 km';
+  const speedDisplay = speedUnit === 'mph' ? '0 MPH (PARKED)' : '0 KM/H (PARKED)';
+
   const dockColumn = (
     <View style={styles.carPlayDock}>
       <View style={styles.dockTopGroup}>
@@ -56,26 +74,57 @@ export const CarReceiverScreen: React.FC = () => {
       </View>
 
       <View style={styles.dockAppStack}>
-        <View style={[styles.dockAppIcon, { backgroundColor: BRAND.colors.accentBlue }]}>
+        <TouchableOpacity
+          style={[styles.dockAppIcon, { backgroundColor: BRAND.colors.accentBlue }]}
+          onPress={() => setCarActiveTab('library')}
+        >
           <Text style={styles.dockAppIconLabel}>P</Text>
-        </View>
-        <View style={[styles.dockAppIcon, { backgroundColor: '#10B981' }]}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.dockAppIcon, { backgroundColor: '#10B981' }]}
+          onPress={() => setCarActiveTab('map')}
+        >
           <Text style={styles.dockAppIconLabel}>NAV</Text>
-        </View>
-        <View style={[styles.dockAppIcon, { backgroundColor: '#EF4444' }]}>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.dockAppIcon, { backgroundColor: '#EF4444' }]}
+          onPress={() => setCarActiveTab('browser')}
+        >
           <Text style={styles.dockAppIconLabel}>YT</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.dockHomeCircle}>
+      <TouchableOpacity
+        style={styles.dockHomeCircle}
+        onPress={toggleCarSplitView}
+      >
         <View style={styles.dockHomeInnerSquare} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const mapNavigationPane = (
+    <View style={styles.mapSidePane}>
+      <View style={styles.mapBadgeRow}>
+        <Text style={styles.mapProviderBadge}>{navProviderName}</Text>
+        <TouchableOpacity onPress={toggleSpeedUnit}>
+          <Text style={styles.mapSpeedBadge}>{speedDisplay}</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.mapTurnTitle}>↱ Turn right in {distanceDisplay}</Text>
+      <Text style={styles.mapDestSub}>To: {navDestination}</Text>
+      <View style={styles.mapRoadVisual}>
+        <View style={styles.mapRouteLine} />
+        <Text style={styles.mapEtaText}>
+          ETA 6 min · {distanceDisplay} ({speedUnit.toUpperCase()})
+        </Text>
       </View>
     </View>
   );
 
   return (
     <View style={styles.outerFrame}>
-      {/* Clean Light Header */}
+      {/* CarPlay Top Bar with 4 Tabs (Library · Browser · Mirror · Map) + Split View */}
       <View style={styles.bezelTopBar}>
         <View style={styles.bezelLeft}>
           <View
@@ -87,17 +136,53 @@ export const CarReceiverScreen: React.FC = () => {
               },
             ]}
           />
-          <Text style={styles.bezelTitle}>
-            Car Screen Display · Code {roomCode}
-          </Text>
+          <Text style={styles.bezelTitle}>CarPlay · {roomCode}</Text>
         </View>
+
+        <View style={styles.topCarTabs}>
+          {(
+            [
+              { id: 'library', label: 'Library' },
+              { id: 'browser', label: 'Browser' },
+              { id: 'mirror', label: 'Mirror' },
+              { id: 'map', label: 'Map' },
+            ] as { id: CarScreenTab; label: string }[]
+          ).map((t) => {
+            const active = carActiveTab === t.id;
+            return (
+              <TouchableOpacity
+                key={t.id}
+                style={[styles.topCarTabBtn, active && styles.topCarTabBtnActive]}
+                onPress={() => setCarActiveTab(t.id)}
+              >
+                <Text
+                  style={[
+                    styles.topCarTabText,
+                    active && styles.topCarTabTextActive,
+                  ]}
+                >
+                  {t.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <View style={styles.bezelBadges}>
-          <View style={styles.bezelBadge}>
-            <Text style={styles.bezelBadgeText}>{quality}</Text>
-          </View>
-          <View style={styles.bezelBadge}>
-            <Text style={styles.bezelBadgeText}>{aspectMode.toUpperCase()}</Text>
-          </View>
+          <TouchableOpacity style={styles.bezelBadge} onPress={toggleSpeedUnit}>
+            <Text style={styles.bezelBadgeText}>{speedUnit.toUpperCase()}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.bezelBadge,
+              carSplitView && { backgroundColor: '#DBEAFE' },
+            ]}
+            onPress={toggleCarSplitView}
+          >
+            <Text style={styles.bezelBadgeText}>
+              {carSplitView ? 'SPLIT ON' : quality}
+            </Text>
+          </TouchableOpacity>
           <View
             style={[
               styles.bezelBadge,
@@ -127,169 +212,180 @@ export const CarReceiverScreen: React.FC = () => {
 
         {/* Stage */}
         <View style={styles.stageArea}>
-          {connectionTarget === 'disconnected' ? (
-            <View style={styles.overlayCentered}>
-              <Text style={styles.standbyPinLabel}>CAR CODE: {roomCode}</Text>
-              <Text style={styles.standbyTitle}>Waiting for Your iPhone</Text>
-              <Text style={styles.standbySub}>
-                Open ParkCast on your iPhone and enter code {roomCode}.
-              </Text>
-            </View>
-          ) : !isParkedConfirmed ? (
-            <View style={styles.overlayCentered}>
-              <Text style={styles.standbyTitle}>
-                Video Paused While Driving
-              </Text>
-              <Text style={styles.standbySub}>
-                Park your vehicle to watch video on the car screen.
-              </Text>
-              <TouchableOpacity
-                style={styles.confirmParkedBtn}
-                onPress={() => setParkedConfirmed(true)}
-              >
-                <Text style={styles.confirmParkedBtnText}>
-                  Car Is Parked · Show Video
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : isSessionExpired ? (
-            <View style={styles.overlayCentered}>
-              <Text style={styles.standbyTitle}>
-                15-Minute Free Preview Ended
-              </Text>
-              <Text style={styles.standbySub}>
-                Upgrade to ParkCast Pro on your iPhone for unlimited watching.
-              </Text>
-              <View style={styles.expiredBtnRow}>
-                <TouchableOpacity
-                  style={styles.upgradeFromCarBtn}
-                  onPress={() => openPaywall()}
-                >
-                  <Text style={styles.upgradeFromCarBtnText}>
-                    Upgrade to Pro
+          <View style={{ flex: 1, flexDirection: 'row' }}>
+            <View style={{ flex: 1 }}>
+              {connectionTarget === 'disconnected' ? (
+                <View style={styles.overlayCentered}>
+                  <Text style={styles.standbyPinLabel}>CAR CODE: {roomCode}</Text>
+                  <Text style={styles.standbyTitle}>Waiting for Your iPhone</Text>
+                  <Text style={styles.standbySub}>
+                    Open ParkCast on your iPhone and enter code {roomCode}.
                   </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.resetFreeDemoBtn}
-                  onPress={resetFreeSessionTimer}
-                >
-                  <Text style={styles.resetFreeDemoText}>Restart 15m Demo</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : mirrorMode === 'screen_broadcast' ? (
-            <View style={styles.mirrorContainer}>
-              <View style={styles.mirrorPhoneMock}>
-                <View style={styles.mirrorPhoneStatus}>
-                  <Text style={styles.mirrorPhoneTime}>iPhone Live Mirror</Text>
-                  <Text style={styles.mirrorPhoneRec}>● LIVE</Text>
                 </View>
-                <Text style={styles.mirrorPhoneHeading}>
-                  Your iPhone Screen Is Mirroring
-                </Text>
-                <View style={styles.mirrorAppGrid}>
-                  {[
-                    { name: 'YouTube', color: '#DC2626' },
-                    { name: 'Safari', color: '#2563EB' },
-                    { name: 'Photos', color: '#16A34A' },
-                    { name: 'Videos', color: '#EA580C' },
-                    { name: 'Music', color: '#7C3AED' },
-                    { name: 'Maps', color: '#0284C7' },
-                  ].map((app) => (
-                    <View
-                      key={app.name}
-                      style={[styles.mirrorAppTile, { backgroundColor: app.color }]}
+              ) : !isParkedConfirmed ? (
+                <View style={styles.overlayCentered}>
+                  <Text style={styles.standbyTitle}>
+                    Are You Parked? (Safety Check)
+                  </Text>
+                  <Text style={styles.standbySub}>
+                    Video shows only while parked. Choose "I'm Parked" to watch video, or stay in Audio + Navigation mode.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.confirmParkedBtn}
+                    onPress={() => setParkedConfirmed(true)}
+                  >
+                    <Text style={styles.confirmParkedBtnText}>
+                      I'm Parked · Show Video
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : isSessionExpired ? (
+                <View style={styles.overlayCentered}>
+                  <Text style={styles.standbyTitle}>
+                    15-Minute Free Preview Ended
+                  </Text>
+                  <Text style={styles.standbySub}>
+                    Upgrade to ParkCast Pro on your iPhone for unlimited watching.
+                  </Text>
+                  <View style={styles.expiredBtnRow}>
+                    <TouchableOpacity
+                      style={styles.upgradeFromCarBtn}
+                      onPress={() => openPaywall()}
                     >
-                      <Text style={styles.mirrorAppTileText}>{app.name}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-          ) : mirrorMode === 'photo_slideshow' && selectedPhotoUri ? (
-            <View style={styles.photoStage}>
-              <Image
-                source={{ uri: selectedPhotoUri }}
-                style={styles.castedPhoto}
-                resizeMode="contain"
-              />
-            </View>
-          ) : (
-            <View
-              style={[
-                styles.videoViewport,
-                aspectMode === 'cinema' && { transform: [{ scale: 1.06 }] },
-              ]}
-            >
-              <View
-                style={[
-                  styles.cinemaVisualizerStage,
-                  aspectMode === 'fit' && styles.cinemaVisualizerFit,
-                ]}
-              >
-                <View style={styles.cinemaRoadDeck}>
-                  <View style={styles.cinemaCenterPlayingCard}>
-                    <View style={styles.cinemaLiveBadgeRow}>
-                      <View
-                        style={[
-                          styles.cinemaLivePulseDot,
-                          !isPlaying && { backgroundColor: '#F59E0B' },
-                        ]}
-                      />
-                      <Text style={styles.cinemaLiveBadgeText}>
-                        {isPlaying
-                          ? `NOW PLAYING · ${quality}`
-                          : 'PAUSED'}
+                      <Text style={styles.upgradeFromCarBtnText}>
+                        Upgrade to Pro
                       </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.resetFreeDemoBtn}
+                      onPress={resetFreeSessionTimer}
+                    >
+                      <Text style={styles.resetFreeDemoText}>Restart 15m Demo</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : carActiveTab === 'map' && !carSplitView ? (
+                mapNavigationPane
+              ) : mirrorMode === 'screen_broadcast' || carActiveTab === 'mirror' ? (
+                <View style={styles.mirrorContainer}>
+                  <View style={styles.mirrorPhoneMock}>
+                    <View style={styles.mirrorPhoneStatus}>
+                      <Text style={styles.mirrorPhoneTime}>iPhone Live Mirror</Text>
+                      <Text style={styles.mirrorPhoneRec}>● LIVE 60FPS</Text>
                     </View>
-                    <Text style={styles.cinemaStageMainTitle}>
-                      {activeMedia.title}
+                    <Text style={styles.mirrorPhoneHeading}>
+                      Your iPhone Screen Is Mirroring
                     </Text>
-                    <Text style={styles.cinemaStageSub}>
-                      {activeMedia.subtitle}
-                    </Text>
-
-                    <View style={styles.waveBarContainer}>
-                      {[24, 42, 32, 52, 38, 56, 44, 28, 48, 36].map(
-                        (baseH, idx) => {
-                          const dynamicH = isPlaying
-                            ? ((baseH + (currentTimeSec * 9 + idx * 7)) % 38) + 14
-                            : 12;
-                          return (
-                            <View
-                              key={idx}
-                              style={[
-                                styles.waveBar,
-                                {
-                                  height: dynamicH,
-                                  backgroundColor:
-                                    idx % 2 === 0 ? '#2563EB' : '#10B981',
-                                },
-                              ]}
-                            />
-                          );
-                        }
-                      )}
+                    <View style={styles.mirrorAppGrid}>
+                      {[
+                        { name: 'YouTube', color: '#DC2626' },
+                        { name: 'Safari', color: '#2563EB' },
+                        { name: 'Photos', color: '#16A34A' },
+                        { name: 'Videos', color: '#EA580C' },
+                        { name: 'IPTV', color: '#7C3AED' },
+                        { name: 'Waze', color: '#0284C7' },
+                      ].map((app) => (
+                        <View
+                          key={app.name}
+                          style={[styles.mirrorAppTile, { backgroundColor: app.color }]}
+                        >
+                          <Text style={styles.mirrorAppTileText}>{app.name}</Text>
+                        </View>
+                      ))}
                     </View>
                   </View>
                 </View>
-              </View>
+              ) : mirrorMode === 'photo_slideshow' && selectedPhotoUri ? (
+                <View style={styles.photoStage}>
+                  <Image
+                    source={{ uri: selectedPhotoUri }}
+                    style={styles.castedPhoto}
+                    resizeMode="contain"
+                  />
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.videoViewport,
+                    aspectMode === 'cinema' && { transform: [{ scale: 1.06 }] },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.cinemaVisualizerStage,
+                      aspectMode === 'fit' && styles.cinemaVisualizerFit,
+                    ]}
+                  >
+                    <View style={styles.cinemaRoadDeck}>
+                      <View style={styles.cinemaCenterPlayingCard}>
+                        <View style={styles.cinemaLiveBadgeRow}>
+                          <View
+                            style={[
+                              styles.cinemaLivePulseDot,
+                              !isPlaying && { backgroundColor: '#F59E0B' },
+                            ]}
+                          />
+                          <Text style={styles.cinemaLiveBadgeText}>
+                            {isPlaying
+                              ? `NOW PLAYING · ${quality} · ${speedDisplay}`
+                              : 'PAUSED'}
+                          </Text>
+                        </View>
+                        <Text style={styles.cinemaStageMainTitle}>
+                          {activeMedia.title}
+                        </Text>
+                        <Text style={styles.cinemaStageSub}>
+                          {activeMedia.subtitle}
+                        </Text>
 
-              <View pointerEvents="none" style={styles.videoTopGradientHud}>
-                <View>
-                  <Text style={styles.hudChannelCategory}>
-                    NOW PLAYING · {quality}
-                  </Text>
-                  <Text style={styles.hudVideoTitle}>{activeMedia.title}</Text>
+                        <View style={styles.waveBarContainer}>
+                          {[24, 42, 32, 52, 38, 56, 44, 28, 48, 36].map(
+                            (baseH, idx) => {
+                              const dynamicH = isPlaying
+                                ? ((baseH + (currentTimeSec * 9 + idx * 7)) % 38) + 14
+                                : 12;
+                              return (
+                                <View
+                                  key={idx}
+                                  style={[
+                                    styles.waveBar,
+                                    {
+                                      height: dynamicH,
+                                      backgroundColor:
+                                        idx % 2 === 0 ? '#2563EB' : '#10B981',
+                                    },
+                                  ]}
+                                />
+                              );
+                            }
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View pointerEvents="none" style={styles.videoTopGradientHud}>
+                    <View>
+                      <Text style={styles.hudChannelCategory}>
+                        {carActiveTab.toUpperCase()} · {quality}
+                      </Text>
+                      <Text style={styles.hudVideoTitle}>{activeMedia.title}</Text>
+                    </View>
+                    <View style={styles.hudAudioBadge}>
+                      <Text style={styles.hudAudioText}>
+                        {isMuted ? 'Muted' : `Vol ${volume}%`}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.hudAudioBadge}>
-                  <Text style={styles.hudAudioText}>
-                    {isMuted ? 'Muted' : `Vol ${volume}%`}
-                  </Text>
-                </View>
-              </View>
+              )}
             </View>
-          )}
+
+            {/* Side-by-Side Split-View Navigation / Browser Pane */}
+            {carSplitView && connectionTarget !== 'disconnected' && isParkedConfirmed && (
+              <View style={styles.splitRightColumn}>{mapNavigationPane}</View>
+            )}
+          </View>
 
           {connectionTarget !== 'disconnected' && isParkedConfirmed && (
             <View
@@ -380,15 +476,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   bezelLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   bezelDot: {
     width: 9,
@@ -397,8 +495,29 @@ const styles = StyleSheet.create({
   },
   bezelTitle: {
     color: '#0F172A',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
+  },
+  topCarTabs: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  topCarTabBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  topCarTabBtnActive: {
+    backgroundColor: BRAND.colors.accentBlue,
+  },
+  topCarTabText: {
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  topCarTabTextActive: {
+    color: '#FFFFFF',
   },
   bezelBadges: {
     flexDirection: 'row',
@@ -406,7 +525,7 @@ const styles = StyleSheet.create({
   },
   bezelBadge: {
     backgroundColor: '#F1F5F9',
-    paddingHorizontal: 9,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
@@ -420,7 +539,7 @@ const styles = StyleSheet.create({
   },
   bezelBadgeText: {
     color: '#334155',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   carScreenBody: {
@@ -429,7 +548,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   carPlayDock: {
-    width: 68,
+    width: 64,
     backgroundColor: '#FFFFFF',
     paddingVertical: 14,
     alignItems: 'center',
@@ -442,12 +561,12 @@ const styles = StyleSheet.create({
   },
   dockClock: {
     color: '#0F172A',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   dockSignalText: {
     color: '#2563EB',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     marginTop: 2,
   },
@@ -456,8 +575,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dockAppIcon: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -488,6 +607,73 @@ const styles = StyleSheet.create({
     position: 'relative',
     justifyContent: 'space-between',
     overflow: 'hidden',
+  },
+  splitRightColumn: {
+    width: '38%',
+    borderLeftWidth: 1,
+    borderLeftColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+  },
+  mapSidePane: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+  },
+  mapBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  mapProviderBadge: {
+    backgroundColor: '#10B981',
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  mapSpeedBadge: {
+    backgroundColor: '#EFF6FF',
+    color: '#1D4ED8',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  mapTurnTitle: {
+    color: '#0F172A',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  mapDestSub: {
+    color: '#475569',
+    fontSize: 12,
+    marginBottom: 14,
+  },
+  mapRoadVisual: {
+    backgroundColor: '#E0F2FE',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  mapRouteLine: {
+    width: 6,
+    height: 44,
+    backgroundColor: '#2563EB',
+    borderRadius: 3,
+    marginBottom: 8,
+  },
+  mapEtaText: {
+    color: '#0369A1',
+    fontSize: 12,
+    fontWeight: '800',
   },
   overlayCentered: {
     flex: 1,
