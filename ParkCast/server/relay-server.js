@@ -171,6 +171,14 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
     .app-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
     .app-tile { padding: 16px 8px; border-radius: 14px; text-align: center; font-weight: 800; font-size: 11px; color: #fff; }
     .bottom-bar { background: #FFFFFF; border-top: 1px solid #E2E8F0; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #475569; z-index: 25; }
+    .stage-row { flex: 1; display: flex; width: 100%; height: 100%; position: relative; overflow: hidden; }
+    .stage-primary { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; height: 100%; }
+    .map-pane { display: none; flex-direction: column; justify-content: space-between; background: #E8EEF5; color: #0F172A; position: relative; overflow: hidden; height: 100%; padding: 18px; z-index: 18; }
+    .map-pane.full-map { flex: 1; display: flex; }
+    .map-pane.split-map { width: 38%; min-width: 310px; display: flex; border-left: 2px solid #CBD5E1; }
+    .top-tab-strip { display: flex; gap: 6px; }
+    .top-tab-btn { background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; }
+    .top-tab-btn.active { background: #2563EB; color: #FFFFFF; border-color: #2563EB; }
   </style>
 </head>
 <body>
@@ -179,6 +187,13 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       <div class="dot" id="connDot"></div>
       <strong id="carTitle" style="font-size:16px">ParkCast Car Display</strong>
       <span class="pin-box" id="pinDisplay">Car Code: 4829</span>
+    </div>
+    <div class="top-tab-strip">
+      <button class="top-tab-btn active" id="tabBtn-library" onclick="switchLocalTab('library')">🎬 Library</button>
+      <button class="top-tab-btn" id="tabBtn-browser" onclick="switchLocalTab('browser')">🌐 Browser</button>
+      <button class="top-tab-btn" id="tabBtn-mirror" onclick="switchLocalTab('mirror')">📱 Mirror</button>
+      <button class="top-tab-btn" id="tabBtn-map" onclick="switchLocalTab('map')">🗺 Map & Nav</button>
+      <button class="top-tab-btn" id="tabBtn-split" onclick="toggleLocalSplit()">◫ Split-View</button>
     </div>
     <div class="badges">
       <span class="badge" id="carTabBadge">LIBRARY</span>
@@ -262,6 +277,56 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
 
       <div class="cursor" id="remoteCursor" style="left:68%;top:36%">● Pointer</div>
     </div>
+
+    <!-- Turn-by-Turn CarPlay Navigation Map Pane (Full Map or Side-by-Side Split-View) -->
+    <div class="map-pane" id="carMapPane">
+      <svg viewBox="0 0 800 600" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;z-index:1">
+        <rect width="800" height="600" fill="#E8EEF5"/>
+        <polygon points="0,0 350,0 300,240 0,210" fill="#D1FAE5"/>
+        <polygon points="480,280 800,240 800,600 510,600" fill="#DCFCE7"/>
+        <path d="M 360,-10 C 410,160 320,340 270,610 L 355,610 C 405,340 495,160 445,-10 Z" fill="#93C5FD"/>
+        <g stroke="#FFFFFF" stroke-width="12">
+          <line x1="0" y1="130" x2="800" y2="170"/>
+          <line x1="0" y1="290" x2="800" y2="275"/>
+          <line x1="0" y1="430" x2="800" y2="415"/>
+          <line x1="180" y1="0" x2="210" y2="600"/>
+          <line x1="520" y1="0" x2="495" y2="600"/>
+          <line x1="680" y1="0" x2="660" y2="600"/>
+        </g>
+        <path d="M 480,580 L 502,420 L 668,415 L 675,140" stroke="#1E40AF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M 480,580 L 502,420 L 668,415 L 675,140" stroke="#3B82F6" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="675" cy="140" r="16" fill="#EF4444" stroke="#FFFFFF" stroke-width="4"/>
+        <circle cx="495" cy="485" r="20" fill="#FFFFFF" stroke="#2563EB" stroke-width="5"/>
+        <polygon points="495,472 485,494 495,489 505,494" fill="#2563EB"/>
+      </svg>
+
+      <!-- Top Turn Maneuver Card -->
+      <div style="position:relative;z-index:5;background:#0F172A;color:#FFFFFF;border-radius:18px;padding:16px 18px;box-shadow:0 12px 28px rgba(15,23,42,0.25);max-width:440px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span id="mapProviderLabel" style="background:#10B981;color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:6px">APPLE MAPS</span>
+          <span id="mapSpeedBadge" style="background:#1E293B;color:#38BDF8;font-size:11px;font-weight:800;padding:3px 10px;border-radius:6px">0 MPH · PARKED</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:48px;height:48px;border-radius:12px;background:#2563EB;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900">↱</div>
+          <div>
+            <div id="mapTurnDist" style="font-size:22px;font-weight:900;color:#60A5FA">0.4 mi · Turn Right</div>
+            <div style="font-size:15px;font-weight:700;color:#FFFFFF">Queensway Blvd East</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Trip Estimate Card -->
+      <div style="position:relative;z-index:5;background:rgba(255,255,255,0.96);border:1px solid #CBD5E1;border-radius:16px;padding:14px 18px;box-shadow:0 8px 24px rgba(15,23,42,0.14);max-width:460px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div id="mapEtaLine" style="font-size:18px;font-weight:900;color:#16A34A">14 min · 2.4 mi · ETA 1:02 PM</div>
+          <div id="mapDestLabel" style="font-size:13px;font-weight:700;color:#475569;margin-top:2px">To: Downtown Charging & Lounge</div>
+        </div>
+        <div style="border:2.5px solid #0F172A;border-radius:8px;padding:4px 10px;text-align:center;background:#fff">
+          <div style="font-size:8px;font-weight:800">LIMIT</div>
+          <div id="mapLimitVal" style="font-size:17px;font-weight:900">35</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="bottom-bar">
@@ -283,10 +348,23 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
     const mirrorOverlay = document.getElementById('mirrorOverlay');
     const mirrorWebFrame = document.getElementById('mirrorWebFrame');
     const mirrorPhoneMock = document.getElementById('mirrorPhoneMock');
+    const stagePrimary = document.querySelector('.stage');
+    const carMapPane = document.getElementById('carMapPane');
     let currentMediaUrl = '';
     let currentYtId = '';
     let currentMirrorUrl = '';
     let lastUpdatedAt = 0;
+    let lastStateCache = { carActiveTab: 'library', carSplitView: false, speedUnit: 'mph', navProvider: 'apple_maps', navDestination: 'Downtown Charging & Lounge' };
+
+    function switchLocalTab(tab) {
+      lastStateCache = Object.assign({}, lastStateCache, { carActiveTab: tab, mirrorMode: tab === 'mirror' ? 'screen_broadcast' : 'off', updatedAt: Date.now() });
+      applyState(lastStateCache);
+    }
+
+    function toggleLocalSplit() {
+      lastStateCache = Object.assign({}, lastStateCache, { carSplitView: !lastStateCache.carSplitView, updatedAt: Date.now() });
+      applyState(lastStateCache);
+    }
 
     // If a video URL fails to decode or is a local phone file:// path, show a clear diagnostic on stage
     videoEl.addEventListener('error', () => {
@@ -307,6 +385,38 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       if (!s) return;
       if (s.updatedAt && s.updatedAt <= lastUpdatedAt) return;
       if (s.updatedAt) lastUpdatedAt = s.updatedAt;
+      lastStateCache = Object.assign({}, lastStateCache, s);
+
+      const activeTab = s.carActiveTab || 'library';
+      const splitOn = Boolean(s.carSplitView);
+      const unit = s.speedUnit || 'mph';
+      const navProv = s.navProvider === 'waze' ? 'WAZE' : s.navProvider === 'google_maps' ? 'GOOGLE MAPS' : 'APPLE MAPS';
+
+      ['library', 'browser', 'mirror', 'map'].forEach((t) => {
+        const btn = document.getElementById('tabBtn-' + t);
+        if (btn) btn.className = 'top-tab-btn' + (activeTab === t ? ' active' : '');
+      });
+      const splitBtn = document.getElementById('tabBtn-split');
+      if (splitBtn) splitBtn.className = 'top-tab-btn' + (splitOn ? ' active' : '');
+
+      // Update Map Pane labels & visibility
+      document.getElementById('mapProviderLabel').textContent = navProv;
+      document.getElementById('mapSpeedBadge').textContent = unit === 'mph' ? '0 MPH · PARKED' : '0 KM/H · PARKED';
+      document.getElementById('mapTurnDist').textContent = (unit === 'mph' ? '0.4 mi' : '650 m') + ' · Turn Right';
+      document.getElementById('mapEtaLine').textContent = '14 min · ' + (unit === 'mph' ? '2.4 mi' : '3.9 km') + ' · ETA 1:02 PM';
+      document.getElementById('mapDestLabel').textContent = 'To: ' + (s.navDestination || 'Downtown Charging & Lounge');
+      document.getElementById('mapLimitVal').textContent = unit === 'mph' ? '35' : '50';
+
+      if (activeTab === 'map' && !splitOn) {
+        stagePrimary.style.display = 'none';
+        carMapPane.className = 'map-pane full-map';
+      } else if (splitOn) {
+        stagePrimary.style.display = 'flex';
+        carMapPane.className = 'map-pane split-map';
+      } else {
+        stagePrimary.style.display = 'flex';
+        carMapPane.className = 'map-pane';
+      }
 
       document.getElementById('qualityBadge').textContent = s.quality || '480p';
       document.getElementById('aspectBadge').textContent = (s.aspectMode || 'fit').toUpperCase();
