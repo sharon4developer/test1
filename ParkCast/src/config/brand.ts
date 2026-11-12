@@ -60,6 +60,10 @@ export const BRAND = {
   tagline: 'Watch Videos, Live TV & Mirror on Your Car Screen',
   version: '1.2.0',
   defaultRelayPort: 4848,
+  cloudRelayUrl: 'https://parkcast-x9nd.onrender.com',
+  privacyPolicyUrl: 'https://parkcast-x9nd.onrender.com/privacy',
+  termsOfUseUrl: 'https://parkcast-x9nd.onrender.com/terms',
+  supportUrl: 'https://parkcast-x9nd.onrender.com/car',
   freeLimits: {
     maxSessionSeconds: 15 * 60, // 15 minutes per free cast session
     maxDailyLocalVideos: 3,

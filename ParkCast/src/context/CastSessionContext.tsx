@@ -200,6 +200,9 @@ function normalizeRelayEndpoint(rawHost: string): { httpBase: string; wsUrl: str
 
 function detectInitialRelayHost(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
+    if (window.location.hostname.includes('.onrender.com')) {
+      return window.location.hostname;
+    }
     return `${window.location.hostname}:${BRAND.defaultRelayPort}`;
   }
   const hostUri =
@@ -213,7 +216,7 @@ function detectInitialRelayHost(): string {
       return `${ipPart}:${BRAND.defaultRelayPort}`;
     }
   }
-  return `10.0.0.87:${BRAND.defaultRelayPort}`;
+  return 'parkcast-x9nd.onrender.com';
 }
 
 const CastSessionContext = createContext<CastSessionContextValue | undefined>(undefined);

@@ -190,13 +190,27 @@ export const NavigationLandingScreen: React.FC<NavigationLandingScreenProps> = (
               onChangeText={setPinInput}
               placeholder="4829"
             />
-            <Text style={styles.inputLabel}>Car Display Wi-Fi Address</Text>
+            <Text style={styles.inputLabel}>Car Display Address (Cloud or Wi-Fi)</Text>
             <TextInput
               style={styles.input}
               value={relayHostInput}
               onChangeText={setRelayHostInput}
               autoCapitalize="none"
             />
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+              <TouchableOpacity
+                style={[styles.setupBtn, { flex: 1, alignItems: 'center' }]}
+                onPress={() => setRelayHostInput('parkcast-x9nd.onrender.com')}
+              >
+                <Text style={styles.setupBtnText}>☁️ Cloud (5G Anywhere)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.setupBtn, { flex: 1, alignItems: 'center' }]}
+                onPress={() => setRelayHostInput('10.0.0.87:4848')}
+              >
+                <Text style={styles.setupBtnText}>🏠 Home Wi-Fi</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
               style={styles.primaryBtn}
               onPress={() => {
