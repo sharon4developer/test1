@@ -50,6 +50,10 @@ export interface CastStatePayload {
   selectedPhotoUri: string | null;
   cursorPos: { x: number; y: number };
   rotaryFocusIndex: number;
+  selectedRouteIndex: number;
+  voiceListening: boolean;
+  lastVoiceTranscript: string;
+  lastVoiceReply: string;
   autoResumeAfterCall: boolean;
   autoRefresh24h: boolean;
   hiddenCategories: string[];
@@ -100,6 +104,9 @@ export interface CastSessionContextValue extends CastStatePayload {
   moveCursor: (dx: number, dy: number) => void;
   stepRotaryKnob: (direction: 1 | -1) => void;
   pressRotaryKnob: () => void;
+  setSelectedRouteIndex: (index: number) => void;
+  setVoiceListening: (listening: boolean) => void;
+  executeVoiceCommand: (spokenText: string) => string;
   triggerRemoteCommand: (label: string) => void;
   openActiveMediaOnPhoneForAirPlay: () => void;
 }
@@ -179,11 +186,11 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     connectionTarget: 'car_receiver',
     carName: 'CarPlay Display · 4829',
     isParkedConfirmed: true,
-    carActiveTab: 'library',
+    carActiveTab: 'map',
     carSplitView: false,
     speedUnit: 'mph',
     navProvider: 'apple_maps',
-    navDestination: 'Downtown Charging & Lounge',
+    navDestination: 'Downtown EV Supercharger & Parking Plaza',
     activeMedia: MEDIA_PRESETS[0],
     isPlaying: true,
     currentTimeSec: 42,
@@ -198,6 +205,10 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     selectedPhotoUri: null,
     cursorPos: { x: 68, y: 36 },
     rotaryFocusIndex: 0,
+    selectedRouteIndex: 0,
+    voiceListening: false,
+    lastVoiceTranscript: '',
+    lastVoiceReply: 'Say "Navigate to Airport", "Find Parking", "Play YouTube", or "Split View"',
     autoResumeAfterCall: true,
     autoRefresh24h: true,
     hiddenCategories: [],
@@ -997,6 +1008,402 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [iptvChannels, state.rotaryFocusIndex, playIptvChannel, togglePlayPause]);
 
+  const setSelectedRouteIndex = useCallback((index: number) => {
+    const routeNames = [
+      'Via Highway 401 Express (Fastest · 14 min)',
+      'Via Queensway Blvd East (No Tolls · 18 min)',
+      'Via Lakeshore Scenic Drive (21 min)',
+    ];
+    const chosen = routeNames[index] || routeNames[0];
+    setState((prev) => ({
+      ...prev,
+      selectedRouteIndex: index,
+      carActiveTab: 'map',
+      lastRemoteAction: `Selected route: ${chosen}`,
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  const setVoiceListening = useCallback((listening: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      voiceListening: listening,
+      lastRemoteAction: listening ? 'Voice Control: Listening...' : prev.lastRemoteAction,
+      updatedAt: Date.now(),
+    }));
+  }, []);
+
+  const speakFeedbackIfAvailable = useCallback((replyText: string) => {
+    if (
+      Platform.OS === 'web' &&
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window
+    ) {
+      try {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(replyText);
+        utter.rate = 1.04;
+        window.speechSynthesis.speak(utter);
+      } catch {
+        // Ignore speech synthesis errors
+      }
+    }
+  }, []);
+
+  const executeVoiceCommand = useCallback(
+    (spokenText: string): string => {
+      const raw = spokenText.trim();
+      if (!raw) return 'Please say a command.';
+      const lower = raw.toLowerCase();
+      let reply = `Executed voice command: "${raw}"`;
+
+      // 1. Navigation & Route Commands
+      if (
+        lower.startsWith('navigate to ') ||
+        lower.startsWith('route to ') ||
+        lower.startsWith('drive to ') ||
+        lower.startsWith('go to ')
+      ) {
+        const dest = raw
+          .replace(/^(navigate|route|drive|go)\s+to\s+/i, '')
+          .trim();
+        if (dest.toLowerCase().includes('lounge') || dest.toLowerCase().includes('media') || dest.toLowerCase().includes('video')) {
+          reply = 'Opening Parked Media Lounge on Car Display.';
+          setState((prev) => ({
+            ...prev,
+            carActiveTab: 'library',
+            voiceListening: false,
+            lastVoiceTranscript: raw,
+            lastVoiceReply: reply,
+            lastRemoteAction: `Voice: ${reply}`,
+            updatedAt: Date.now(),
+          }));
+          speakFeedbackIfAvailable(reply);
+          return reply;
+        }
+        reply = `Routing to ${dest} with Turn-by-Turn Navigation.`;
+        setState((prev) => ({
+          ...prev,
+          navDestination: dest,
+          carActiveTab: 'map',
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: `Voice Nav: ${dest}`,
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('find parking') || lower.includes('nearby parking')) {
+        const dest = 'Queensway Municipal Parking Plaza (64 Open Bays)';
+        reply = `Found nearby parking: ${dest}. Showing route on CarPlay map.`;
+        setState((prev) => ({
+          ...prev,
+          navDestination: dest,
+          carActiveTab: 'map',
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: `Voice POI: ${dest}`,
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('ev ') || lower.includes('charger') || lower.includes('supercharger') || lower.includes('charging')) {
+        const dest = 'Downtown EV Supercharger Plaza (8 Fast Stalls Open)';
+        reply = `Routing to nearest EV charger: ${dest}.`;
+        setState((prev) => ({
+          ...prev,
+          navDestination: dest,
+          carActiveTab: 'map',
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: `Voice EV Charger: ${dest}`,
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('waze')) {
+        reply = 'Switched turn-by-turn navigator to Waze.';
+        setState((prev) => ({
+          ...prev,
+          navProvider: 'waze',
+          carActiveTab: 'map',
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: 'Voice: Navigator set to Waze',
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('google map')) {
+        reply = 'Switched turn-by-turn navigator to Google Maps.';
+        setState((prev) => ({
+          ...prev,
+          navProvider: 'google_maps',
+          carActiveTab: 'map',
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: 'Voice: Navigator set to Google Maps',
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('apple map') || lower === 'show map' || lower === 'open map') {
+        reply = 'Showing Apple Maps Turn-by-Turn Navigation on Car Display.';
+        setState((prev) => ({
+          ...prev,
+          navProvider: 'apple_maps',
+          carActiveTab: 'map',
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: 'Voice: Showing CarPlay Map',
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      // 2. Speed Units (MPH / KM/H)
+      if (lower.includes('kilometer') || lower.includes('km/h') || lower.includes('kmh') || lower.includes('metric')) {
+        reply = 'Switched speed and distance units to Kilometers (KM/H).';
+        setState((prev) => ({
+          ...prev,
+          speedUnit: 'kmh',
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: 'Voice: Units set to KM/H',
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('mile') || lower.includes('mph') || lower.includes('imperial')) {
+        reply = 'Switched speed and distance units to Miles (MPH).';
+        setState((prev) => ({
+          ...prev,
+          speedUnit: 'mph',
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: 'Voice: Units set to MPH',
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      // 3. Split-View & Screen Mirroring
+      if (lower.includes('split view') || lower.includes('side by side') || lower.includes('split screen')) {
+        const turnOff = lower.includes('off') || lower.includes('close') || lower.includes('exit');
+        reply = turnOff
+          ? 'Closed Split-View. Returning to full-screen display.'
+          : 'Turned on CarPlay Split-View (Navigation Map + Media side-by-side).';
+        setState((prev) => ({
+          ...prev,
+          carSplitView: !turnOff,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: `Voice: ${reply}`,
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('mirror')) {
+        const stop = lower.includes('stop') || lower.includes('off') || lower.includes('exit');
+        reply = stop
+          ? 'Stopped iPhone screen mirroring.'
+          : 'Started live 60fps iPhone screen mirroring to Car Display.';
+        setState((prev) => ({
+          ...prev,
+          carActiveTab: stop ? 'map' : 'mirror',
+          mirrorMode: stop ? 'off' : 'screen_broadcast',
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: `Voice: ${reply}`,
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      // 4. YouTube, Live TV & Shuffle
+      if (lower.includes('youtube')) {
+        const query = raw.replace(/.*youtube\s*/i, '').trim() || 'Swiss Alps 4K Scenic Drive';
+        playYouTubeUrlOrQuery(query);
+        reply = `Playing YouTube on Car Display: ${query}.`;
+        setState((prev) => ({
+          ...prev,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('shuffle') || lower.includes('live tv') || lower.includes('iptv') || lower.includes('next channel')) {
+        shufflePlayMedia();
+        reply = 'Shuffling Live TV M3U playlist on Car Display.';
+        setState((prev) => ({
+          ...prev,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      // 5. Playback, Volume & Aspect Ratio
+      if (lower === 'pause' || lower.includes('pause video') || lower.includes('stop video')) {
+        reply = 'Paused playback on Car Display.';
+        setState((prev) => ({
+          ...prev,
+          isPlaying: false,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: 'Voice: Paused playback',
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower === 'play' || lower === 'resume' || lower.includes('resume video')) {
+        reply = `Resumed playing ${state.activeMedia.title}.`;
+        setState((prev) => ({
+          ...prev,
+          carActiveTab: 'library',
+          isPlaying: true,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: 'Voice: Resumed playback',
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('louder') || lower.includes('volume up')) {
+        const nextVol = Math.min(100, state.volume + 15);
+        reply = `Volume increased to ${nextVol}%.`;
+        setState((prev) => ({
+          ...prev,
+          volume: nextVol,
+          isMuted: false,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: `Voice: Volume ${nextVol}%`,
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('quieter') || lower.includes('volume down')) {
+        const nextVol = Math.max(0, state.volume - 15);
+        reply = `Volume lowered to ${nextVol}%.`;
+        setState((prev) => ({
+          ...prev,
+          volume: nextVol,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: `Voice: Volume ${nextVol}%`,
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('unmute')) {
+        reply = 'Unmuted car audio.';
+        setState((prev) => ({
+          ...prev,
+          isMuted: false,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: 'Voice: Unmuted audio',
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('mute')) {
+        reply = 'Muted car audio.';
+        setState((prev) => ({
+          ...prev,
+          isMuted: true,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: 'Voice: Muted audio',
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      if (lower.includes('full screen') || lower.includes('widescreen')) {
+        const mode: AspectMode = lower.includes('widescreen') ? 'cinema' : 'fill';
+        reply = `Set car display screen size to ${mode.toUpperCase()}.`;
+        setState((prev) => ({
+          ...prev,
+          aspectMode: mode,
+          voiceListening: false,
+          lastVoiceTranscript: raw,
+          lastVoiceReply: reply,
+          lastRemoteAction: `Voice: Aspect ${mode.toUpperCase()}`,
+          updatedAt: Date.now(),
+        }));
+        speakFeedbackIfAvailable(reply);
+        return reply;
+      }
+
+      // Default: treat any other phrase as a destination search on the CarPlay Map
+      reply = `Routing to "${raw}" on CarPlay Map.`;
+      setState((prev) => ({
+        ...prev,
+        navDestination: raw,
+        carActiveTab: 'map',
+        voiceListening: false,
+        lastVoiceTranscript: raw,
+        lastVoiceReply: reply,
+        lastRemoteAction: `Voice Destination: ${raw}`,
+        updatedAt: Date.now(),
+      }));
+      speakFeedbackIfAvailable(reply);
+      return reply;
+    },
+    [playYouTubeUrlOrQuery, shufflePlayMedia, speakFeedbackIfAvailable, state.activeMedia.title, state.volume]
+  );
+
   const triggerRemoteCommand = useCallback((label: string) => {
     setState((prev) => ({
       ...prev,
@@ -1059,6 +1466,9 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         moveCursor,
         stepRotaryKnob,
         pressRotaryKnob,
+        setSelectedRouteIndex,
+        setVoiceListening,
+        executeVoiceCommand,
         triggerRemoteCommand,
         openActiveMediaOnPhoneForAirPlay,
       }}

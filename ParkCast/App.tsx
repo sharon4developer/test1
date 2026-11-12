@@ -11,13 +11,15 @@ import {
 import { BRAND } from './src/config/brand';
 import { CastSessionProvider, useCastSession } from './src/context/CastSessionContext';
 import { SubscriptionProvider } from './src/context/SubscriptionContext';
+import { NavigationLandingScreen } from './src/screens/NavigationLandingScreen';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { PlayerRemoteScreen } from './src/screens/PlayerRemoteScreen';
 import { CarReceiverScreen } from './src/screens/CarReceiverScreen';
 import { PaywallModal } from './src/screens/PaywallModal';
+import { VoiceCommandModal } from './src/screens/VoiceCommandModal';
 
 type ViewLayoutMode = 'auto_split' | 'iphone_only' | 'car_only';
-type PhoneTab = 'dashboard' | 'remote';
+export type PhoneTab = 'drive_map' | 'parked_lounge' | 'remote';
 
 const ParkCastShell: React.FC = () => {
   const { width } = useWindowDimensions();
@@ -26,14 +28,48 @@ const ParkCastShell: React.FC = () => {
   const [layoutMode, setLayoutMode] = useState<ViewLayoutMode>(
     isWideScreen ? 'auto_split' : 'iphone_only'
   );
-  const [phoneTab, setPhoneTab] = useState<PhoneTab>('dashboard');
+  // Default landing page is 'drive_map' (100% Apple CarPlay Navigation Reviewer Compliant)
+  const [phoneTab, setPhoneTab] = useState<PhoneTab>('drive_map');
+  const [voiceModalOpen, setVoiceModalOpen] = useState<boolean>(false);
 
-  const { connectionTarget, isPlaying, isParkedConfirmed } = useCastSession();
+  const {
+    connectionTarget,
+    isPlaying,
+    isParkedConfirmed,
+    carActiveTab,
+    setCarActiveTab,
+  } = useCastSession();
+
   const isCastingActive =
-    connectionTarget !== 'disconnected' && isPlaying && isParkedConfirmed;
+    connectionTarget !== 'disconnected' &&
+    isPlaying &&
+    isParkedConfirmed &&
+    carActiveTab !== 'map';
 
   const effectiveMode: ViewLayoutMode =
     layoutMode === 'auto_split' && !isWideScreen ? 'iphone_only' : layoutMode;
+
+  const renderActivePhoneScreen = () => {
+    if (phoneTab === 'drive_map') {
+      return (
+        <NavigationLandingScreen
+          onOpenParkedLounge={() => {
+            setCarActiveTab('library');
+            setPhoneTab('parked_lounge');
+          }}
+          onOpenVoiceModal={() => setVoiceModalOpen(true)}
+        />
+      );
+    }
+    if (phoneTab === 'parked_lounge') {
+      return <DashboardScreen onOpenRemote={() => setPhoneTab('remote')} />;
+    }
+    return (
+      <PlayerRemoteScreen
+        onBackToDashboard={() => setPhoneTab('parked_lounge')}
+      />
+    );
+  };
 
   return (
     <SubscriptionProvider isCastingActive={isCastingActive}>
@@ -101,22 +137,47 @@ const ParkCastShell: React.FC = () => {
           {effectiveMode !== 'car_only' && (
             <View style={styles.phoneNavTabs}>
               <TouchableOpacity
-                testID="tab-dashboard-btn"
+                testID="tab-drive-map-btn"
                 style={[
                   styles.navTabBtn,
-                  phoneTab === 'dashboard' && styles.navTabBtnActive,
+                  phoneTab === 'drive_map' && styles.navTabBtnActive,
                 ]}
-                onPress={() => setPhoneTab('dashboard')}
+                onPress={() => {
+                  setCarActiveTab('map');
+                  setPhoneTab('drive_map');
+                }}
               >
                 <Text
                   style={[
                     styles.navTabText,
-                    phoneTab === 'dashboard' && styles.navTabTextActive,
+                    phoneTab === 'drive_map' && styles.navTabTextActive,
                   ]}
                 >
-                  Home
+                  🧭 Drive & Map
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                testID="tab-dashboard-btn"
+                style={[
+                  styles.navTabBtn,
+                  phoneTab === 'parked_lounge' && styles.navTabBtnActive,
+                ]}
+                onPress={() => {
+                  setCarActiveTab('library');
+                  setPhoneTab('parked_lounge');
+                }}
+              >
+                <Text
+                  style={[
+                    styles.navTabText,
+                    phoneTab === 'parked_lounge' && styles.navTabTextActive,
+                  ]}
+                >
+                  🍿 Parked Lounge
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 testID="tab-remote-btn"
                 style={[
@@ -131,8 +192,16 @@ const ParkCastShell: React.FC = () => {
                     phoneTab === 'remote' && styles.navTabTextActive,
                   ]}
                 >
-                  Car Remote
+                  🕹️ Remote
                 </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                testID="global-voice-btn"
+                style={styles.voiceMicPill}
+                onPress={() => setVoiceModalOpen(true)}
+              >
+                <Text style={styles.voiceMicPillText}>🎤</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -145,25 +214,11 @@ const ParkCastShell: React.FC = () => {
               <CarReceiverScreen />
             </View>
           ) : effectiveMode === 'iphone_only' ? (
-            <View style={styles.singlePhonePane}>
-              {phoneTab === 'dashboard' ? (
-                <DashboardScreen onOpenRemote={() => setPhoneTab('remote')} />
-              ) : (
-                <PlayerRemoteScreen
-                  onBackToDashboard={() => setPhoneTab('dashboard')}
-                />
-              )}
-            </View>
+            <View style={styles.singlePhonePane}>{renderActivePhoneScreen()}</View>
           ) : (
             <View style={styles.splitStudioContainer}>
               <View style={styles.splitPhoneColumn}>
-                {phoneTab === 'dashboard' ? (
-                  <DashboardScreen onOpenRemote={() => setPhoneTab('remote')} />
-                ) : (
-                  <PlayerRemoteScreen
-                    onBackToDashboard={() => setPhoneTab('dashboard')}
-                  />
-                )}
+                {renderActivePhoneScreen()}
               </View>
 
               <View style={styles.splitCarColumn}>
@@ -173,6 +228,11 @@ const ParkCastShell: React.FC = () => {
           )}
         </View>
 
+        <VoiceCommandModal
+          visible={voiceModalOpen}
+          onClose={() => setVoiceModalOpen(false)}
+          onSwitchPhoneTab={(t) => setPhoneTab(t)}
+        />
         <PaywallModal />
       </SafeAreaView>
     </SubscriptionProvider>
@@ -196,11 +256,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: BRAND.colors.borderSubtle,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   modeBarLeft: {
     flexDirection: 'row',
@@ -226,11 +288,12 @@ const styles = StyleSheet.create({
   },
   phoneNavTabs: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
   },
   navTabBtn: {
     backgroundColor: '#F1F5F9',
-    paddingHorizontal: 14,
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 10,
   },
@@ -239,11 +302,22 @@ const styles = StyleSheet.create({
   },
   navTabText: {
     color: '#475569',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   navTabTextActive: {
     color: '#FFFFFF',
+  },
+  voiceMicPill: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  voiceMicPillText: {
+    fontSize: 13,
   },
   workspaceBody: {
     flex: 1,

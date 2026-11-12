@@ -189,16 +189,17 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       <span class="pin-box" id="pinDisplay">Car Code: 4829</span>
     </div>
     <div class="top-tab-strip">
-      <button class="top-tab-btn active" id="tabBtn-library" onclick="switchLocalTab('library')">🎬 Library</button>
-      <button class="top-tab-btn" id="tabBtn-browser" onclick="switchLocalTab('browser')">🌐 Browser</button>
+      <button class="top-tab-btn active" id="tabBtn-map" onclick="switchLocalTab('map')">🧭 Drive & Map</button>
+      <button class="top-tab-btn" id="tabBtn-library" onclick="switchLocalTab('library')">🅿️ Parked Lounge</button>
+      <button class="top-tab-btn" id="tabBtn-browser" onclick="switchLocalTab('browser')">🌐 Web</button>
       <button class="top-tab-btn" id="tabBtn-mirror" onclick="switchLocalTab('mirror')">📱 Mirror</button>
-      <button class="top-tab-btn" id="tabBtn-map" onclick="switchLocalTab('map')">🗺 Map & Nav</button>
       <button class="top-tab-btn" id="tabBtn-split" onclick="toggleLocalSplit()">◫ Split-View</button>
+      <button class="top-tab-btn" id="tabBtn-voice" onclick="startCarVoiceControl()" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE">🎤 Voice</button>
     </div>
     <div class="badges">
-      <span class="badge" id="carTabBadge">LIBRARY</span>
+      <span class="badge" id="carTabBadge">MAP</span>
       <span class="badge" id="speedUnitBadge">MPH</span>
-      <span class="badge" id="qualityBadge">480p</span>
+      <span class="badge" id="qualityBadge">GPS HD</span>
       <span class="badge" id="aspectBadge">FIT</span>
       <span class="badge" id="volBadge">VOL 85%</span>
     </div>
@@ -211,18 +212,18 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
         <div style="font-size:10px;color:#2563EB;font-weight:700">CarPlay</div>
       </div>
       <div>
-        <div class="dock-icon" style="background:#2563EB">P</div>
-        <div class="dock-icon" style="background:#10B981">NAV</div>
-        <div class="dock-icon" style="background:#EF4444">YT</div>
+        <div class="dock-icon" style="background:#2563EB;cursor:pointer" onclick="switchLocalTab('map')">NAV</div>
+        <div class="dock-icon" style="background:#10B981;cursor:pointer" onclick="switchLocalTab('map')">MAP</div>
+        <div class="dock-icon" style="background:#475569;cursor:pointer" onclick="switchLocalTab('library')">POI</div>
       </div>
       <div style="width:28px;height:28px;border-radius:14px;border:2px solid #94A3B8"></div>
     </div>
 
-    <div class="stage">
+    <div class="stage" style="display:none">
       <div class="hud-top">
         <div>
           <div class="hud-sub" id="hudCategory">NOW SHOWING</div>
-          <div class="hud-title" id="hudTitle">Swiss Alps Scenic Drive</div>
+          <div class="hud-title" id="hudTitle">Downtown EV Supercharger & Parking Plaza</div>
         </div>
         <div class="badge" id="lastActionBadge">Connected to iPhone</div>
       </div>
@@ -230,8 +231,8 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       <div class="visualizer-fallback" id="visualizerFallback">
         <div style="background:#FFFFFF;border:1px solid #DBEAFE;border-radius:22px;padding:28px 36px;max-width:480px;box-shadow:0 12px 30px rgba(37,99,235,0.08)">
           <div style="color:#16A34A;font-size:12px;font-weight:800;letter-spacing:0.6px;margin-bottom:8px">● CONNECTED TO YOUR IPHONE</div>
-          <h2 style="font-size:22px;margin-bottom:8px;color:#0F172A" id="stageCenterTitle">Ready to Play</h2>
-          <p style="color:#475569;font-size:14px;line-height:1.5" id="stageCenterSub">Pick Watch YouTube, Phone Photos, Phone Videos, or Mirror Screen on your iPhone.</p>
+          <h2 style="font-size:22px;margin-bottom:8px;color:#0F172A" id="stageCenterTitle">Parked Rest-Stop Companion</h2>
+          <p style="color:#475569;font-size:14px;line-height:1.5" id="stageCenterSub">Use Turn-by-Turn Navigation, Voice Control, or open Parked Lounge on your iPhone.</p>
         </div>
       </div>
 
@@ -278,8 +279,8 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       <div class="cursor" id="remoteCursor" style="left:68%;top:36%">● Pointer</div>
     </div>
 
-    <!-- Turn-by-Turn CarPlay Navigation Map Pane (Full Map or Side-by-Side Split-View) -->
-    <div class="map-pane" id="carMapPane">
+    <!-- Turn-by-Turn CarPlay Navigation Map Pane (Default Full Map on Load) -->
+    <div class="map-pane full-map" id="carMapPane">
       <svg viewBox="0 0 800 600" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;z-index:1">
         <rect width="800" height="600" fill="#E8EEF5"/>
         <polygon points="0,0 350,0 300,240 0,210" fill="#D1FAE5"/>
@@ -330,11 +331,17 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
   </div>
 
   <div class="bottom-bar">
-    <div id="playStatusText">Connected · Choose any video or photo on your iPhone</div>
-    <button onclick="const v=document.getElementById('videoPlayer'); v.muted=false; v.play().catch(()=>{}); this.textContent='🔊 Sound On';"
-      style="background:#2563EB;color:#fff;border:none;padding:8px 16px;border-radius:10px;font-weight:700;cursor:pointer">
-      🔊 Turn Sound On
-    </button>
+    <div id="playStatusText">🧭 Active Turn-by-Turn Route Guidance · 0 MPH (Parked) · Voice Control Ready</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="startCarVoiceControl()"
+        style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;padding:8px 14px;border-radius:10px;font-weight:800;cursor:pointer">
+        🎤 Speak Command
+      </button>
+      <button onclick="const v=document.getElementById('videoPlayer'); v.muted=false; v.play().catch(()=>{}); this.textContent='🔊 Voice Guidance On';"
+        style="background:#2563EB;color:#fff;border:none;padding:8px 16px;border-radius:10px;font-weight:700;cursor:pointer">
+        🔊 Voice Guidance On
+      </button>
+    </div>
   </div>
 
   <script>
@@ -354,7 +361,7 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
     let currentYtId = '';
     let currentMirrorUrl = '';
     let lastUpdatedAt = 0;
-    let lastStateCache = { carActiveTab: 'library', carSplitView: false, speedUnit: 'mph', navProvider: 'apple_maps', navDestination: 'Downtown Charging & Lounge' };
+    let lastStateCache = { carActiveTab: 'map', carSplitView: false, speedUnit: 'mph', navProvider: 'apple_maps', navDestination: 'Downtown EV Supercharger & Parking Plaza' };
 
     function switchLocalTab(tab) {
       lastStateCache = Object.assign({}, lastStateCache, { carActiveTab: tab, mirrorMode: tab === 'mirror' ? 'screen_broadcast' : 'off', updatedAt: Date.now() });
@@ -364,6 +371,59 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
     function toggleLocalSplit() {
       lastStateCache = Object.assign({}, lastStateCache, { carSplitView: !lastStateCache.carSplitView, updatedAt: Date.now() });
       applyState(lastStateCache);
+    }
+
+    function startCarVoiceControl() {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRec) {
+        try {
+          const rec = new SpeechRec();
+          rec.lang = 'en-US';
+          document.getElementById('playStatusText').textContent = '🎤 Listening... Say "Navigate to Airport", "Find Parking", "Switch to KM/H", or "Split View"';
+          rec.onresult = (ev) => {
+            const phrase = (ev.results && ev.results[0] && ev.results[0][0] && ev.results[0][0].transcript) || '';
+            if (phrase) handleSpokenPhraseOnCar(phrase);
+          };
+          rec.start();
+          return;
+        } catch (e) {}
+      }
+      const fallback = prompt('Speak or type any Voice Command (e.g., "Navigate to Central Station", "Find EV Charger", "Switch to KM/H", "Split View"):');
+      if (fallback) handleSpokenPhraseOnCar(fallback);
+    }
+
+    function handleSpokenPhraseOnCar(phrase) {
+      const lower = phrase.toLowerCase();
+      let nextPatch = { lastRemoteAction: 'Voice: "' + phrase + '"', updatedAt: Date.now() };
+      if (lower.includes('km') || lower.includes('kilometer')) {
+        nextPatch.speedUnit = 'kmh';
+      } else if (lower.includes('mph') || lower.includes('mile')) {
+        nextPatch.speedUnit = 'mph';
+      } else if (lower.includes('waze')) {
+        nextPatch.navProvider = 'waze';
+        nextPatch.carActiveTab = 'map';
+      } else if (lower.includes('google')) {
+        nextPatch.navProvider = 'google_maps';
+        nextPatch.carActiveTab = 'map';
+      } else if (lower.includes('split')) {
+        nextPatch.carSplitView = !lower.includes('off');
+      } else if (lower.includes('mirror')) {
+        nextPatch.carActiveTab = 'mirror';
+        nextPatch.mirrorMode = 'screen_broadcast';
+      } else if (lower.includes('lounge') || lower.includes('video') || lower.includes('tv')) {
+        nextPatch.carActiveTab = 'library';
+      } else {
+        const dest = phrase.replace(/^(navigate|route|drive|go)\s+to\s+/i, '').trim();
+        nextPatch.navDestination = dest;
+        nextPatch.carActiveTab = 'map';
+      }
+      lastStateCache = Object.assign({}, lastStateCache, nextPatch);
+      applyState(lastStateCache);
+      fetch('/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomCode, payload: lastStateCache }),
+      }).catch(() => {});
     }
 
     // If a video URL fails to decode or is a local phone file:// path, show a clear diagnostic on stage
@@ -410,6 +470,14 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
       if (activeTab === 'map' && !splitOn) {
         stagePrimary.style.display = 'none';
         carMapPane.className = 'map-pane full-map';
+        videoEl.pause();
+        document.getElementById('playStatusText').textContent =
+          '🧭 Active Turn-by-Turn Route Guidance to ' +
+          (s.navDestination || 'Downtown EV Supercharger & Parking Plaza') +
+          ' · 0 ' +
+          unit.toUpperCase() +
+          ' (Parked)';
+        return;
       } else if (splitOn) {
         stagePrimary.style.display = 'flex';
         carMapPane.className = 'map-pane split-map';

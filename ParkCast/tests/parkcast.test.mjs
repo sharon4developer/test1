@@ -29,7 +29,7 @@ test('ParkCast native CarPlay & External Display Expo Config Plugin registers un
   assert.match(pluginSrc, /com\.apple\.developer\.carplay-maps/);
 });
 
-test('ParkCast CastSessionContext implements competitor bug fixes (MPH/KMH, Waze, M3U/Xtream, Category Hide, Shuffle, Auto-Resume, Self-Heal)', () => {
+test('ParkCast CastSessionContext implements competitor bug fixes (MPH/KMH, Waze, M3U/Xtream, Category Hide, Shuffle, Auto-Resume, Self-Heal, Voice Command Engine)', () => {
   const ctxSrc = fs.readFileSync(
     path.join(process.cwd(), 'src/context/CastSessionContext.tsx'),
     'utf8'
@@ -42,6 +42,13 @@ test('ParkCast CastSessionContext implements competitor bug fixes (MPH/KMH, Waze
   assert.match(ctxSrc, /toggleAutoResumeAfterCall/);
   assert.match(ctxSrc, /healCarConnection/);
   assert.match(ctxSrc, /stepRotaryKnob/);
+  assert.match(ctxSrc, /executeVoiceCommand/);
+  assert.match(ctxSrc, /carActiveTab:\s*'map'/);
+
+  const navLandingPath = path.join(process.cwd(), 'src/screens/NavigationLandingScreen.tsx');
+  assert.equal(fs.existsSync(navLandingPath), true);
+  const voiceModalPath = path.join(process.cwd(), 'src/screens/VoiceCommandModal.tsx');
+  assert.equal(fs.existsSync(voiceModalPath), true);
 });
 
 test('ParkCast WebSocket relay pairs iPhone Controller and Car Screen Receiver by 4-digit PIN', async () => {

@@ -76,21 +76,21 @@ export const CarReceiverScreen: React.FC = () => {
       <View style={styles.dockAppStack}>
         <TouchableOpacity
           style={[styles.dockAppIcon, { backgroundColor: BRAND.colors.accentBlue }]}
-          onPress={() => setCarActiveTab('library')}
-        >
-          <Text style={styles.dockAppIconLabel}>P</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.dockAppIcon, { backgroundColor: '#10B981' }]}
           onPress={() => setCarActiveTab('map')}
         >
           <Text style={styles.dockAppIconLabel}>NAV</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.dockAppIcon, { backgroundColor: '#EF4444' }]}
-          onPress={() => setCarActiveTab('browser')}
+          style={[styles.dockAppIcon, { backgroundColor: '#10B981' }]}
+          onPress={() => setCarActiveTab('map')}
         >
-          <Text style={styles.dockAppIconLabel}>YT</Text>
+          <Text style={styles.dockAppIconLabel}>MAP</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.dockAppIcon, { backgroundColor: '#475569' }]}
+          onPress={() => setCarActiveTab('library')}
+        >
+          <Text style={styles.dockAppIconLabel}>POI</Text>
         </TouchableOpacity>
       </View>
 
