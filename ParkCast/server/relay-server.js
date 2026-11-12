@@ -870,17 +870,114 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (req.url === '/privacy') {
+  if (req.url === '/privacy' || (req.url && req.url.startsWith('/privacy?'))) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.writeHead(200);
-    res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ParkCast Privacy Policy</title></head><body style="font-family:sans-serif;max-width:680px;margin:40px auto;padding:0 20px;color:#0F172A;line-height:1.6"><h1>ParkCast Privacy Policy</h1><p>Effective Date: November 10, 2026</p><p>ParkCast ("we", "our", or "the App") respects your privacy. Photos and videos selected from your device are transmitted solely to your paired car screen receiver and are never sold or shared with third parties.</p><h3>Data We Collect</h3><ul><li><strong>Purchase &amp; Subscription Status:</strong> Processed securely by Apple In-App Purchases (StoreKit) and RevenueCat to unlock ParkCast Pro features.</li><li><strong>Temporary Media Relay:</strong> Photos or videos you choose to cast are temporarily buffered only for your active 4-digit Car Code session.</li></ul><h3>Contact</h3><p>For questions or support, contact support@parkcast.app.</p></body></html>`);
+    res.end(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParkCast Privacy Policy</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #F4F6FB; color: #0F172A; margin: 0; padding: 32px 16px; line-height: 1.65; }
+    .card { max-width: 760px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; padding: 32px; border: 1px solid #E2E8F0; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06); }
+    h1 { font-size: 28px; margin-top: 0; color: #0F172A; }
+    h2 { font-size: 18px; margin-top: 24px; color: #1E3A8A; }
+    .badge { display: inline-block; background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 8px; margin-bottom: 12px; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">ParkCast v1.2 · CarPlay Navigation, Voice Control &amp; Parked Companion</span>
+    <h1>Privacy Policy</h1>
+    <p><strong>Last Updated &amp; Effective Date:</strong> November 12, 2026</p>
+    <p>ParkCast ("we", "our", or "the App") is committed to protecting your privacy. ParkCast operates without requiring user registration or personal accounts, and keeps your routes, playlists, and media preferences stored locally on your device.</p>
+
+    <h2>1. Location &amp; Turn-by-Turn Navigation Data</h2>
+    <ul>
+      <li><strong>When-In-Use Location (GPS):</strong> ParkCast accesses device location solely while you use the App to display turn-by-turn route guidance, calculate ETA, display vehicle speed in MPH or KM/H, confirm parked status, and locate nearby parking or EV charging stations on your iPhone and CarPlay display.</li>
+      <li><strong>No Location Tracking or Sale:</strong> Your GPS coordinates and route history are processed in real time and are never sold, profiled, or shared with third-party advertisers.</li>
+    </ul>
+
+    <h2>2. Hands-Free Voice Control &amp; Speech Recognition</h2>
+    <ul>
+      <li><strong>Voice Commands:</strong> When you tap the Voice Control button, spoken phrases (such as destination searches or playback commands) are transcribed to execute your requested action. ParkCast does not record, store, or archive raw voice audio on any external server.</li>
+    </ul>
+
+    <h2>3. Local Media, Playlists &amp; Temporary Car Display Relay</h2>
+    <ul>
+      <li><strong>On-Device Playlists:</strong> M3U / M3U8 playlist links, Xtream / media server addresses, favorites, and category preferences remain locally on your iPhone. When you play a stream, your device connects directly to the source you provided.</li>
+      <li><strong>Temporary Session Relay:</strong> When you cast a photo or video from your iPhone camera roll to your paired 4-digit Car Code display, the media stream is buffered temporarily for that active session only and is never shared with third parties.</li>
+    </ul>
+
+    <h2>4. In-App Purchases &amp; Subscriptions</h2>
+    <ul>
+      <li><strong>Apple StoreKit &amp; RevenueCat:</strong> All subscription and lifetime transactions are processed directly by Apple In-App Purchases. We only receive anonymized entitlement verification receipts to unlock ParkCast Pro features and never have access to your credit card or Apple ID billing details.</li>
+    </ul>
+
+    <h2>5. Contact Us</h2>
+    <p>If you have any questions about this Privacy Policy or your data, contact us at: <strong>support@parkcast.app</strong></p>
+  </div>
+</body>
+</html>`);
     return;
   }
 
-  if (req.url === '/terms') {
+  if (req.url === '/terms' || (req.url && req.url.startsWith('/terms?'))) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.writeHead(200);
-    res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ParkCast Terms of Use (EULA)</title></head><body style="font-family:sans-serif;max-width:680px;margin:40px auto;padding:0 20px;color:#0F172A;line-height:1.6"><h1>ParkCast Terms of Use (EULA)</h1><p>Effective Date: November 10, 2026</p><h3>1. Safety Notice (Parked Use Only)</h3><p>ParkCast is intended strictly for use while your vehicle is safely parked. Never watch video or interact with the app while driving.</p><h3>2. Subscriptions &amp; Billing</h3><p>ParkCast Pro is offered as a Monthly ($4.99/month), Yearly ($24.99/year with a 3-day free trial), or Lifetime ($49.99 one-time) purchase. Payment is charged to your Apple Account at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period in your iPhone Account Settings.</p></body></html>`);
+    res.end(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParkCast Terms of Use (EULA)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #F4F6FB; color: #0F172A; margin: 0; padding: 32px 16px; line-height: 1.65; }
+    .card { max-width: 760px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; padding: 32px; border: 1px solid #E2E8F0; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06); }
+    h1 { font-size: 28px; margin-top: 0; color: #0F172A; }
+    h2 { font-size: 18px; margin-top: 24px; color: #1E3A8A; }
+    .badge { display: inline-block; background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 8px; margin-bottom: 12px; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">ParkCast v1.2 · End-User License Agreement (EULA)</span>
+    <h1>Terms of Use (EULA)</h1>
+    <p><strong>Last Updated &amp; Effective Date:</strong> November 12, 2026</p>
+    <p>By downloading, installing, or using ParkCast ("the App"), you agree to these Terms of Use and the standard Apple Licensed Application End User License Agreement (EULA).</p>
+
+    <h2>1. Driver Safety &amp; Parked-Only Media Rule</h2>
+    <ul>
+      <li><strong>Navigation While Driving:</strong> Turn-by-turn route guidance and hands-free voice commands are designed to assist drivers, but you must always obey posted traffic laws and keep your full attention on the road.</li>
+      <li><strong>Parked Rest-Stop Lounge (Parked Vehicles Only):</strong> All video playback, M3U/IPTV streaming, browser viewing, and screen mirroring features are intended <strong>strictly for use while your vehicle is safely parked</strong> (such as during EV charging stops, rest breaks, or camping). Never watch video or operate media controls while driving.</li>
+    </ul>
+
+    <h2>2. Utility Player Only — User-Supplied Media &amp; Playlists</h2>
+    <ul>
+      <li><strong>No Bundled Content:</strong> ParkCast is a general-purpose navigation and media player utility only. ParkCast does <strong>not</strong> provide, host, bundle, sell, or endorse any TV channels, M3U playlists, movies, or copyrighted streams.</li>
+      <li><strong>User Responsibility:</strong> You supply your own local files, links, or playlists and are solely responsible for ensuring you have the legal right to access and view any media source you open in the App.</li>
+    </ul>
+
+    <h2>3. ParkCast Pro Subscriptions &amp; Lifetime Access</h2>
+    <ul>
+      <li><strong>Plans:</strong> ParkCast Pro is available as a Monthly Subscription ($4.99/month), Yearly Subscription ($24.99/year with a 3-day free trial), or a one-time Lifetime Access purchase ($49.99).</li>
+      <li><strong>Auto-Renewal &amp; Cancellation:</strong> Payment is charged to your Apple Account at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current billing period. You can manage or cancel your subscription anytime in your iPhone <strong>Settings &rarr; Apple Account &rarr; Subscriptions</strong>. Any unused portion of a free trial is forfeited when purchasing a subscription.</li>
+    </ul>
+
+    <h2>4. Limitation of Liability</h2>
+    <p>The App is provided "as is" without warranties of any kind. Compatibility with specific vehicle head units, CarPlay configurations, or DRM-protected third-party streams depends on your vehicle hardware and iOS version.</p>
+
+    <h2>5. Contact Us</h2>
+    <p>For support, billing inquiries, or feedback, contact: <strong>support@parkcast.app</strong></p>
+  </div>
+</body>
+</html>`);
     return;
   }
 

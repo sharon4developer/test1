@@ -176,8 +176,8 @@ export const PaywallModal: React.FC = () => {
                 </View>
                 <Text style={styles.legalBodyText}>
                   {legalDoc === 'privacy'
-                    ? 'ParkCast respects your privacy. Photos and videos selected from your iPhone are streamed only to your paired car display and are never sold or shared with third parties. Subscription status is verified securely through Apple In-App Purchases (StoreKit) and RevenueCat.'
-                    : 'Safety First: Video playback on the car display is intended strictly for when your vehicle is safely parked. Never watch video while driving. Subscriptions automatically renew unless canceled at least 24 hours before the end of the current period in iPhone Settings -> Apple Account -> Subscriptions.'}
+                    ? 'ParkCast v1.2 respects your privacy. 1) Location & Navigation: GPS location is used only while in use for turn-by-turn route guidance, MPH/KM/H speed display, and nearby parking/EV charger search, and is never sold or shared. 2) Voice Control: Spoken commands are processed only when you tap Voice Control and are never stored. 3) Media & Playlists: M3U playlists remain on your iPhone, and casted camera roll files are buffered only for your active 4-digit Car Code session. 4) Subscriptions: Verified securely via Apple StoreKit and RevenueCat. Full policy: https://parkcast-x9nd.onrender.com/privacy'
+                    : '1) Safety Rule: Turn-by-turn navigation is for driving assistance; all video, M3U/IPTV, browser, and mirroring features in Parked Lounge are strictly for when your vehicle is safely parked. Never watch video while driving. 2) Utility Player Only: ParkCast does not host, bundle, or provide any TV channels or copyrighted streams; users supply their own legally permitted playlists and files. 3) Subscriptions: Monthly ($4.99), Yearly ($24.99 with 3-day trial), and Lifetime ($49.99) plans are billed via Apple Account and auto-renew unless canceled 24h before period end in iPhone Settings. Full EULA: https://parkcast-x9nd.onrender.com/terms'}
                 </Text>
               </View>
             )}
