@@ -117,10 +117,12 @@ export const NavigationLandingScreen: React.FC<NavigationLandingScreenProps> = (
           <View style={styles.logoCircle}>
             <Text style={styles.logoText}>P</Text>
           </View>
-          <View>
-            <Text style={styles.brandTitle}>ParkCast Navigation</Text>
-            <Text style={styles.brandSubtitle}>
-              Turn-by-Turn Route Guidance & Parking Finder
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={styles.brandTitle} numberOfLines={1} adjustsFontSizeToFit>
+              ParkCast Navigation
+            </Text>
+            <Text style={styles.brandSubtitle} numberOfLines={1}>
+              Turn-by-Turn Route Guidance & Parking
             </Text>
           </View>
         </View>
@@ -234,9 +236,11 @@ export const NavigationLandingScreen: React.FC<NavigationLandingScreenProps> = (
       {/* Destination Search & Voice Input */}
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardTitle}>Where would you like to drive?</Text>
+          <Text style={[styles.cardTitle, { flex: 1, marginRight: 6 }]} numberOfLines={1}>
+            Where would you like to drive?
+          </Text>
           <TouchableOpacity onPress={onOpenVoiceModal}>
-            <Text style={styles.voiceLink}>🎤 Speak Destination</Text>
+            <Text style={styles.voiceLink}>🎤 Speak</Text>
           </TouchableOpacity>
         </View>
 
@@ -332,7 +336,7 @@ export const NavigationLandingScreen: React.FC<NavigationLandingScreenProps> = (
               style={[styles.routeCard, isSelected && styles.routeCardSelected]}
               onPress={() => setSelectedRouteIndex(rt.id)}
             >
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, paddingRight: 6 }}>
                 <View style={styles.routeTopLine}>
                   <View
                     style={[
@@ -349,7 +353,9 @@ export const NavigationLandingScreen: React.FC<NavigationLandingScreenProps> = (
                       {rt.badge}
                     </Text>
                   </View>
-                  <Text style={styles.routeTitle}>{rt.title}</Text>
+                  <Text style={[styles.routeTitle, { flex: 1 }]} numberOfLines={1}>
+                    {rt.title}
+                  </Text>
                 </View>
                 <Text style={styles.routeSub}>
                   {rt.etaMin} min · {speedUnit === 'mph' ? rt.distMiles : rt.distKm} ·{' '}
