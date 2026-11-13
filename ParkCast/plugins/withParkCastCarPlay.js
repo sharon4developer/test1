@@ -16,6 +16,7 @@ const {
   withInfoPlist,
   withEntitlementsPlist,
   withXcodeProject,
+  IOSConfig,
 } = require('expo/config-plugins');
 
 const CARPLAY_SWIFT_SOURCE = `import Foundation
@@ -126,22 +127,31 @@ function withParkCastCarPlay(config, options = {}) {
       NSAllowsLocalNetworking: true,
     };
 
-    // 3. Register CarPlay Template Application Scene (Leaves main phone window to React Native AppDelegate
-    //    while routing the CarPlay display directly to ParkCastCarPlaySceneDelegate!)
-    if (enableManagedCarPlay) {
-      infoPlist.UIApplicationSceneManifest = {
-        UIApplicationSupportsMultipleScenes: true,
-        UISceneConfigurations: {
-          CPTemplateApplicationSceneSessionRoleApplication: [
-            {
-              UISceneClassName: 'CPTemplateApplicationScene',
-              UISceneConfigurationName: 'ParkCastCarPlayScene',
-              UISceneDelegateClassName: 'ParkCastCarPlaySceneDelegate',
-            },
-          ],
+    // 3. Register Both the Main Phone Scene (`SceneDelegate`) AND the CarPlay Scene (`ParkCastCarPlaySceneDelegate`)
+    const sceneConfigurations = {
+      UIWindowSceneSessionRoleApplication: [
+        {
+          UISceneClassName: 'UIWindowScene',
+          UISceneConfigurationName: 'Default Configuration',
+          UISceneDelegateClassName: 'SceneDelegate',
         },
-      };
+      ],
+    };
+
+    if (enableManagedCarPlay) {
+      sceneConfigurations.CPTemplateApplicationSceneSessionRoleApplication = [
+        {
+          UISceneClassName: 'CPTemplateApplicationScene',
+          UISceneConfigurationName: 'ParkCastCarPlayScene',
+          UISceneDelegateClassName: 'ParkCastCarPlaySceneDelegate',
+        },
+      ];
     }
+
+    infoPlist.UIApplicationSceneManifest = {
+      UIApplicationSupportsMultipleScenes: true,
+      UISceneConfigurations: sceneConfigurations,
+    };
 
     // 4. Bonjour services for zero-config Car Display & AirPlay / DLNA discovery
     infoPlist.NSBonjourServices = [
@@ -180,16 +190,13 @@ function withParkCastCarPlay(config, options = {}) {
     fs.writeFileSync(swiftFilePath, CARPLAY_SWIFT_SOURCE, 'utf8');
 
     const relativeFilePath = `${projectName}/ParkCastCarPlaySceneDelegate.swift`;
-    const group =
-      xcodeProject.pbxGroupByName(projectName) ||
-      xcodeProject.findPBXGroupKey({ name: projectName });
-
     if (!xcodeProject.hasFile(relativeFilePath)) {
-      xcodeProject.addSourceFile(
-        relativeFilePath,
-        { target: xcodeProject.getFirstTarget().uuid },
-        group
-      );
+      IOSConfig.XcodeUtils.addBuildSourceFileToGroup({
+        filepath: relativeFilePath,
+        groupName: projectName,
+        project: xcodeProject,
+        isBuildFile: true,
+      });
     }
 
     return modConfig;
