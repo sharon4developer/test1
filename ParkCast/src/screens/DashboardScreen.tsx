@@ -7,6 +7,7 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -169,9 +170,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
       {/* Simple, Friendly Header */}
       <View style={styles.headerRow}>
         <View style={styles.brandRow}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>P</Text>
-          </View>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="cover"
+          />
           <View>
             <Text style={styles.brandTitle}>{BRAND.appName}</Text>
             <Text style={styles.brandSubtitle}>Car Video, IPTV & Mirror</Text>
@@ -816,6 +819,13 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.colors.accentBlue,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoImage: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BRAND.colors.borderSubtle,
   },
   logoText: {
     color: '#FFFFFF',

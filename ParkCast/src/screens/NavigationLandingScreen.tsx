@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Image,
 } from 'react-native';
 import { BRAND, NavProvider } from '../config/brand';
 import { useCastSession } from '../context/CastSessionContext';
@@ -114,9 +115,11 @@ export const NavigationLandingScreen: React.FC<NavigationLandingScreenProps> = (
       {/* Clean Navigation Header */}
       <View style={styles.headerRow}>
         <View style={styles.brandRow}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>P</Text>
-          </View>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="cover"
+          />
           <View style={{ flex: 1, paddingRight: 8 }}>
             <Text style={styles.brandTitle} numberOfLines={1} adjustsFontSizeToFit>
               ParkCast Navigation
@@ -475,6 +478,13 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.colors.accentBlue,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoImage: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BRAND.colors.borderSubtle,
   },
   logoText: {
     color: '#FFFFFF',

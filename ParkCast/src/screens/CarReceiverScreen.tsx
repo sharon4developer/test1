@@ -75,10 +75,14 @@ export const CarReceiverScreen: React.FC = () => {
 
       <View style={styles.dockAppStack}>
         <TouchableOpacity
-          style={[styles.dockAppIcon, { backgroundColor: BRAND.colors.accentBlue }]}
+          style={[styles.dockAppIcon, { overflow: 'hidden', backgroundColor: '#0F172A' }]}
           onPress={() => setCarActiveTab('map')}
         >
-          <Text style={styles.dockAppIconLabel}>NAV</Text>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={{ width: 40, height: 40, borderRadius: 12 }}
+            resizeMode="cover"
+          />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.dockAppIcon, { backgroundColor: '#10B981' }]}

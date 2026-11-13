@@ -190,6 +190,7 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
 <body>
   <div class="top-bar">
     <div class="status-group">
+      <img src="/logo-file/logo-2-gearshift-prism.jpg" alt="ParkCast" style="width:32px;height:32px;border-radius:9px;object-fit:cover;box-shadow:0 2px 8px rgba(15,23,42,0.18)" />
       <div class="dot" id="connDot"></div>
       <strong id="carTitle" style="font-size:16px">ParkCast Car Display</strong>
       <span class="pin-box" id="pinDisplay">Car Code: 4829</span>
@@ -218,7 +219,9 @@ const CAR_RECEIVER_HTML = `<!DOCTYPE html>
         <div style="font-size:10px;color:#2563EB;font-weight:700">CarPlay</div>
       </div>
       <div>
-        <div class="dock-icon" style="background:#2563EB;cursor:pointer" onclick="switchLocalTab('map')">NAV</div>
+        <div class="dock-icon" style="background:#0F172A;cursor:pointer;overflow:hidden;padding:0" onclick="switchLocalTab('map')">
+          <img src="/logo-file/logo-2-gearshift-prism.jpg" alt="ParkCast" style="width:100%;height:100%;object-fit:cover" />
+        </div>
         <div class="dock-icon" style="background:#10B981;cursor:pointer" onclick="switchLocalTab('map')">MAP</div>
         <div class="dock-icon" style="background:#475569;cursor:pointer" onclick="switchLocalTab('library')">POI</div>
       </div>
@@ -975,6 +978,87 @@ const server = http.createServer((req, res) => {
 
     <h2>5. Contact Us</h2>
     <p>For support, billing inquiries, or feedback, contact: <strong>support@parkcast.app</strong></p>
+  </div>
+</body>
+</html>`);
+    return;
+  }
+
+  // Serve generated 1024x1024 App Icon candidates and a visual Icon Picker gallery at /logos
+  if (req.url && req.url.startsWith('/logo-file/')) {
+    const fileName = path.basename(req.url.replace('/logo-file/', '').split('?')[0]);
+    const filePath = path.join(__dirname, '..', 'assets', 'logo-candidates', fileName);
+    if (fs.existsSync(filePath)) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.writeHead(200);
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    }
+    res.writeHead(404);
+    res.end('Not found');
+    return;
+  }
+
+  if (req.url === '/logos' || (req.url && req.url.startsWith('/logos?'))) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.writeHead(200);
+    res.end(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParkCast — Choose Your Official App Store Icon</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #F4F6FB; color: #0F172A; margin: 0; padding: 32px 20px; }
+    .wrap { max-width: 1120px; margin: 0 auto; }
+    h1 { font-size: 28px; font-weight: 900; margin-bottom: 6px; }
+    p.sub { color: #475569; font-size: 15px; margin-top: 0; margin-bottom: 26px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+    .card { background: #FFFFFF; border-radius: 24px; padding: 22px; border: 1px solid #E2E8F0; box-shadow: 0 10px 28px rgba(15,23,42,0.06); display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .num-badge { background: #EFF6FF; color: #1D4ED8; font-weight: 800; font-size: 12px; padding: 5px 12px; border-radius: 20px; margin-bottom: 14px; border: 1px solid #BFDBFE; }
+    .ios-squircle { width: 220px; height: 220px; border-radius: 48px; overflow: hidden; box-shadow: 0 16px 36px rgba(15,23,42,0.22); margin-bottom: 16px; border: 1px solid rgba(0,0,0,0.08); }
+    .ios-squircle img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    h3 { font-size: 18px; font-weight: 800; margin: 0 0 6px 0; }
+    p.desc { color: #475569; font-size: 13px; line-height: 1.5; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ParkCast — 5 Unique App Store Icon Candidates</h1>
+    <p class="sub">Shown inside the real iOS rounded-square mask. Reply in chat with <strong>Option 1, 2, 3, 4, or 5</strong> to set it as your official icon!</p>
+    <div class="grid">
+      <div class="card">
+        <span class="num-badge">OPTION 1</span>
+        <div class="ios-squircle"><img src="/logo-file/logo-1-horizon-portal.jpg" alt="Option 1" /></div>
+        <h3>1. The Night-Drive Horizon Portal</h3>
+        <p class="desc">Neon highway lane lines rushing forward and morphing upward into a floating panoramic glass car display.</p>
+      </div>
+      <div class="card">
+        <span class="num-badge">OPTION 2</span>
+        <div class="ios-squircle"><img src="/logo-file/logo-2-gearshift-prism.jpg" alt="Option 2" /></div>
+        <h3>2. The Gearshift Prism ("P")</h3>
+        <p class="desc">Sculpted titanium automotive "P" (Park) emblem where the inner lens refracts a vibrant aurora beam of light.</p>
+      </div>
+      <div class="card">
+        <span class="num-badge">OPTION 3</span>
+        <div class="ios-squircle"><img src="/logo-file/logo-3-cockpit-wave.jpg" alt="Option 3" /></div>
+        <h3>3. The Panoramic Cockpit Wave</h3>
+        <p class="desc">Futuristic sports-car dashboard &amp; floating 10.25" screen with a levitating golden-amber &amp; cyan voice/wireless wave.</p>
+      </div>
+      <div class="card">
+        <span class="num-badge">OPTION 4</span>
+        <div class="ios-squircle"><img src="/logo-file/logo-4-compass-glass.jpg" alt="Option 4" /></div>
+        <h3>4. The Compass Cinema Lens</h3>
+        <p class="desc">Three translucent glassmorphic screens overlapping in 3D perspective to form a glowing navigation arrow on a pearl background.</p>
+      </div>
+      <div class="card">
+        <span class="num-badge">OPTION 5</span>
+        <div class="ios-squircle"><img src="/logo-file/logo-5-starlight-drivein.jpg" alt="Option 5" /></div>
+        <h3>5. The Starlight Drive-In</h3>
+        <p class="desc">Looking through a coupé panoramic windshield at night with the center dashboard screen glowing with northern-lights colors.</p>
+      </div>
+    </div>
   </div>
 </body>
 </html>`);
