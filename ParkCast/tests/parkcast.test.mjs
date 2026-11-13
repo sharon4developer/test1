@@ -27,6 +27,11 @@ test('ParkCast native CarPlay & External Display Expo Config Plugin registers un
   assert.match(pluginSrc, /CPTemplateApplicationSceneSessionRoleApplication/);
   assert.match(pluginSrc, /UIWindowSceneSessionRoleExternalDisplayNonInteractive/);
   assert.match(pluginSrc, /com\.apple\.developer\.carplay-maps/);
+
+  const easConfig = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), 'eas.json'), 'utf8')
+  );
+  assert.equal(easConfig.submit?.production?.ios?.ascAppId, '6833728775');
 });
 
 test('ParkCast CastSessionContext implements competitor bug fixes (MPH/KMH, Waze, M3U/Xtream, Category Hide, Shuffle, Auto-Resume, Self-Heal, Voice Command Engine)', () => {

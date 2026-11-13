@@ -16,6 +16,10 @@
 const { withInfoPlist, withEntitlementsPlist } = require('expo/config-plugins');
 
 function withParkCastCarPlay(config, options = {}) {
+  const enableManagedCarPlay =
+    process.env.PARKCAST_ENABLE_CARPLAY_ENTITLEMENT === 'true' ||
+    Boolean(options && options.enableCarPlayEntitlements);
+
   config = withInfoPlist(config, (modConfig) => {
     const infoPlist = modConfig.modResults;
 
@@ -37,32 +41,37 @@ function withParkCastCarPlay(config, options = {}) {
       NSAllowsLocalNetworking: true,
     };
 
-    // 3. Register Multi-Screen Scene Manifest (iPhone + External Car Display + CarPlay Base View)
+    // 3. Register Multi-Screen Scene Manifest (iPhone + External Car Display + optional CarPlay Base View)
+    const sceneConfigurations = {
+      UIWindowSceneSessionRoleApplication: [
+        {
+          UISceneClassName: 'UIWindowScene',
+          UISceneConfigurationName: 'Default Configuration',
+          UISceneDelegateClassName: '$(PRODUCT_MODULE_NAME).SceneDelegate',
+        },
+      ],
+      UIWindowSceneSessionRoleExternalDisplayNonInteractive: [
+        {
+          UISceneClassName: 'UIWindowScene',
+          UISceneConfigurationName: 'ParkCastExternalCarDisplay',
+          UISceneDelegateClassName: '$(PRODUCT_MODULE_NAME).SceneDelegate',
+        },
+      ],
+    };
+
+    if (enableManagedCarPlay) {
+      sceneConfigurations.CPTemplateApplicationSceneSessionRoleApplication = [
+        {
+          UISceneClassName: 'CPTemplateApplicationScene',
+          UISceneConfigurationName: 'ParkCastCarPlayScene',
+          UISceneDelegateClassName: '$(PRODUCT_MODULE_NAME).SceneDelegate',
+        },
+      ];
+    }
+
     infoPlist.UIApplicationSceneManifest = {
       UIApplicationSupportsMultipleScenes: true,
-      UISceneConfigurations: {
-        UIWindowSceneSessionRoleApplication: [
-          {
-            UISceneClassName: 'UIWindowScene',
-            UISceneConfigurationName: 'Default Configuration',
-            UISceneDelegateClassName: '$(PRODUCT_MODULE_NAME).SceneDelegate',
-          },
-        ],
-        UIWindowSceneSessionRoleExternalDisplayNonInteractive: [
-          {
-            UISceneClassName: 'UIWindowScene',
-            UISceneConfigurationName: 'ParkCastExternalCarDisplay',
-            UISceneDelegateClassName: '$(PRODUCT_MODULE_NAME).SceneDelegate',
-          },
-        ],
-        CPTemplateApplicationSceneSessionRoleApplication: [
-          {
-            UISceneClassName: 'CPTemplateApplicationScene',
-            UISceneConfigurationName: 'ParkCastCarPlayScene',
-            UISceneDelegateClassName: '$(PRODUCT_MODULE_NAME).SceneDelegate',
-          },
-        ],
-      },
+      UISceneConfigurations: sceneConfigurations,
     };
 
     // 4. Bonjour services for zero-config Car Display & AirPlay / DLNA discovery
@@ -78,9 +87,6 @@ function withParkCastCarPlay(config, options = {}) {
 
   config = withEntitlementsPlist(config, (modConfig) => {
     const entitlements = modConfig.modResults;
-    const enableManagedCarPlay =
-      process.env.PARKCAST_ENABLE_CARPLAY_ENTITLEMENT === 'true' ||
-      Boolean(options && options.enableCarPlayEntitlements);
 
     if (enableManagedCarPlay) {
       // Universal CarPlay Navigation Base View (works in ALL CarPlay cars, even on iOS 27.2+)
