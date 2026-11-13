@@ -14,7 +14,10 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "PARKCAST_ENABLE_CARPLAY_ENTITLEMENT": "true"
+      }
     }
   },
   "submit": {
