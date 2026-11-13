@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.parkcast.carvideo.test",
-      "buildNumber": "8",
+      "buildNumber": "10",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "ParkCast needs access to your photos and videos so you can display them on your car screen while parked.",
