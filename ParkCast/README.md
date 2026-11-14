@@ -1,50 +1,35 @@
-# ParkCast: Car Video & Screen Mirror (`Expo Go` + Linux)
+# ParkCast 2.0
 
-**ParkCast** is a React Native (Expo) iPhone controller and Car Display Receiver application designed to be developed and tested directly from a **Linux laptop** using **Expo Go**—with a built-in **Free vs. Pro Subscription Engine** (RevenueCat + Apple StoreKit 2 ready).
+ParkCast puts your iPhone on the car screen through CarPlay: turn-by-turn directions, your photos and videos, any website, and full-screen iPhone mirroring. Video automatically pauses while the car is moving.
 
----
+The app is an Expo (SDK 58) project with a local native module, so it needs a development or EAS build. Expo Go cannot run it.
 
-## Quick Start on Your Linux Laptop
+## Project layout
 
-```bash
-cd /var/www/html/ParkCast
+| Path | What it is |
+| --- | --- |
+| `App.tsx`, `src/` | The iPhone app (Home search, Library, Mirror, Settings, Browser, Paywall). |
+| `modules/parkcast-native/ios` | Swift: the CarPlay scene, car screen, MapKit navigation, speech, and the mirroring receiver. |
+| `plugins/` | Config plugins that add the CarPlay scene, entitlements and the ReplayKit broadcast extension. |
+| `src/config/pricing.json` | The only place prices live. The app, paywall and server all read it. |
+| `app.json` → `expo.extra` | Runtime settings: relay URL, support email, weather API, mirror port, RevenueCat key and ads. |
+| `server/` | Privacy and terms pages, `/health`, and the optional web screen at `/car`. |
 
-# 1. Start the lightweight 4-digit PIN pairing relay (optional, for multi-device sync)
-npm run relay
-
-# 2. In another terminal, launch Expo for your iPhone (Expo Go) and Web Receiver
-npx expo start --tunnel
-# (or `npx expo start` when your Linux laptop and iPhone are on the same Wi-Fi)
-```
-
-- **On your iPhone**: Open the **Camera** app, scan the QR code printed in your Linux terminal, and the app opens inside **Expo Go**.
-- **On a Car Browser / Tablet / Desktop Preview**: Run `npm run web` (or open the Expo web URL) to view the **Split Studio (iPhone + Car Screen)** or switch to **Car Display Receiver** mode.
-
----
-
-## Free vs. Paid (Pro) Subscription Model
-
-No custom payment database or backend is required. Payments are structured for **Apple In-App Purchases (StoreKit 2)** managed through **RevenueCat** (`react-native-purchases`), which is free up to $2,500/month in tracked revenue.
-
-| Feature | Free Starter Plan ($0) | ParkCast Pro ($4.99/mo · $24.99/yr · $49.99 Lifetime) |
-|---|---|---|
-| **Car Screen Pairing (4-Digit PIN & AirPlay)** | Included | Included + Multi-Car Profiles |
-| **YouTube & Web Video Streaming** | Up to `480p SD` · `15 min` per session | `1080p Full HD` & `4K UHD` · Unlimited duration |
-| **Camera Roll Videos & Photos** | Unlimited Photos + `3 Videos/day` | Unlimited Videos & Photo Albums |
-| **Real-Time iPhone Screen Mirroring** | Locked | Unlocked (`60fps` Broadcast Mode) |
-| **IPTV & Custom `.m3u8` / `.mp4` Links** | 1 Saved Stream | Unlimited Custom M3U8 Channels |
-| **Car Cinema Scaling (`Fit` / `Fill` / `21:9 Zoom`)** | Standard Fit Only | Full-Bleed Fill, Cinema Zoom & Left/Right Driver Dock |
-
----
-
-## Building for the iOS App Store / TestFlight from Linux (No Mac Required)
-
-When you are ready to build a standalone `.ipa` for your iPhone or publish to TestFlight / App Store Connect from Linux:
+## Develop
 
 ```bash
-npm install -g eas-cli
-eas login
-eas build --platform ios --profile preview
+npm install
+npm run typecheck
+npm test
+npx expo prebuild --platform ios --clean   # inspect the generated Xcode project
+npm run relay                              # local web services on :4848
 ```
 
-Expo Application Services (EAS) compiles and signs the native iOS binary in the cloud directly from your Linux terminal.
+## Release checklist
+
+1. **App Store Connect:** create four auto-renewable subscriptions in one group, with product IDs `parkcast.weekly`, `parkcast.monthly`, `parkcast.quarterly` and `parkcast.yearly` (the yearly plan has a 3-day free trial).
+2. **RevenueCat:** add the products, attach them to an entitlement called `pro` in the current offering, then paste the public iOS SDK key into `expo.extra.revenueCatIosKey`.
+3. **Mirroring extension:** register the bundle ID `com.parkcast.carvideo.test.broadcast` in the Apple Developer portal. EAS creates its provisioning profile on the next build.
+4. **CarPlay:** the production profile sets `PARKCAST_ENABLE_CARPLAY_ENTITLEMENT=true`, which needs Apple's approved `com.apple.developer.carplay-maps` entitlement on the App ID.
+5. **Ads:** `expo.extra.ads` uses Google test ads. Before the App Store release, replace the AdMob app ID in the `react-native-google-mobile-ads` plugin and the unit IDs, and set `useTestIds` to `false`.
+6. Build with `eas build --platform ios --profile production`, then submit with `eas submit`.

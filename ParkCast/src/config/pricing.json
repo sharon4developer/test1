@@ -1,0 +1,45 @@
+{
+  "entitlementId": "pro",
+  "freeSessionMinutes": 15,
+  "plans": [
+    {
+      "id": "weekly",
+      "productId": "parkcast.weekly",
+      "name": "Weekly",
+      "price": "$1.49",
+      "priceValue": 1.49,
+      "periodLabel": "week",
+      "renewalLabel": "every week"
+    },
+    {
+      "id": "monthly",
+      "productId": "parkcast.monthly",
+      "name": "Monthly",
+      "price": "$2.99",
+      "priceValue": 2.99,
+      "periodLabel": "month",
+      "renewalLabel": "every month"
+    },
+    {
+      "id": "quarterly",
+      "productId": "parkcast.quarterly",
+      "name": "3 Months",
+      "price": "$5.99",
+      "priceValue": 5.99,
+      "periodLabel": "3 months",
+      "renewalLabel": "every 3 months"
+    },
+    {
+      "id": "yearly",
+      "productId": "parkcast.yearly",
+      "name": "Yearly",
+      "price": "$11.99",
+      "priceValue": 11.99,
+      "periodLabel": "year",
+      "renewalLabel": "every year",
+      "trialDays": 3,
+      "highlight": true,
+      "badge": "Best value"
+    }
+  ]
+}

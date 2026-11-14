@@ -2,14 +2,14 @@
   "expo": {
     "name": "ParkCast: Car Video & Mirror",
     "slug": "parkcast",
-    "version": "1.1.0",
+    "version": "2.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F4F6FB"
+      "backgroundColor": "#F7F8FB"
     },
     "ios": {
       "supportsTablet": true,
@@ -17,21 +17,44 @@
       "buildNumber": "12",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSPhotoLibraryUsageDescription": "ParkCast needs access to your photos and videos so you can display them on your car screen while parked.",
-        "NSLocalNetworkUsageDescription": "ParkCast uses your local network to connect and stream media to your car display and AirPlay receivers.",
-        "NSLocationWhenInUseUsageDescription": "ParkCast uses your location to display parked status, speed in MPH or KM/H, and turn-by-turn navigation on your car display.",
-        "UIBackgroundModes": ["audio", "location", "fetch"]
+        "NSPhotoLibraryUsageDescription": "ParkCast shows the photos and videos you pick on your car screen.",
+        "NSLocationWhenInUseUsageDescription": "ParkCast uses your location to show where you are on the car map, give turn-by-turn directions, show your speed and pause video while the car is moving.",
+        "NSMicrophoneUsageDescription": "ParkCast listens only while you hold the microphone button so you can say where to go or what to play.",
+        "NSSpeechRecognitionUsageDescription": "ParkCast turns your spoken request into an action, on your iPhone whenever possible.",
+        "UIBackgroundModes": ["audio", "location"]
       }
     },
     "plugins": [
-      "./plugins/withParkCastCarPlay"
+      "./plugins/withParkCastCarPlay",
+      "./plugins/withParkCastBroadcast",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ParkCast uses your location to show where you are on the car map, give turn-by-turn directions, show your speed and pause video while the car is moving."
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-3940256099942544~1458507531",
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "delayAppMeasurementInit": true,
+          "userTrackingUsageDescription": "This lets ParkCast show ads that are more relevant to you. Premium removes all ads."
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "This lets ParkCast show ads that are more relevant to you. Premium removes all ads."
+        }
+      ]
     ],
     "android": {
       "package": "com.parkcast.carvideo",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#F4F6FB"
+        "backgroundColor": "#F7F8FB"
       }
     },
     "web": {
@@ -40,8 +63,33 @@
     },
     "owner": "dotnot",
     "extra": {
+      "relayUrl": "https://parkcast-x9nd.onrender.com",
+      "supportEmail": "support@parkcast.app",
+      "weatherApiUrl": "https://api.open-meteo.com/v1/forecast",
+      "mirrorPort": 48231,
+      "revenueCatIosKey": "",
+      "ads": {
+        "enabled": true,
+        "useTestIds": true,
+        "iosBannerUnitId": "",
+        "iosRewardedUnitId": "",
+        "iosInterstitialUnitId": ""
+      },
       "eas": {
-        "projectId": "427b8aaf-76c8-4a7e-847b-b5cabc0444aa"
+        "projectId": "427b8aaf-76c8-4a7e-847b-b5cabc0444aa",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ParkCastBroadcast",
+                  "bundleIdentifier": "com.parkcast.carvideo.test.broadcast",
+                  "entitlements": {}
+                }
+              ]
+            }
+          }
+        }
       }
     }
   }

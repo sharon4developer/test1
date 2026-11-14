@@ -1,18 +1,14 @@
 FROM node:22-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --omit=dev --legacy-peer-deps
+RUN npm init -y >/dev/null && npm install --no-audit --no-fund ws@8
 
+COPY app.json ./
+COPY src/config/pricing.json ./src/config/pricing.json
 COPY server ./server
-COPY assets ./assets
 
 ENV PORT=4848
-ENV PARKCAST_RELAY_PORT=4848
-
 EXPOSE 4848
 
 CMD ["node", "server/relay-server.js"]

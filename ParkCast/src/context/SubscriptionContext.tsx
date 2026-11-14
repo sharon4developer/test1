@@ -1,174 +1,176 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { BRAND, PlanId, VideoQuality, AspectMode } from '../config/brand';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Linking, Platform } from 'react-native';
+import Purchases, { type CustomerInfo, type PurchasesPackage } from 'react-native-purchases';
+import { ENV } from '../config/env';
+import { FREE_SESSION_SECONDS, PRICING_PLANS, PRO_ENTITLEMENT_ID, type PlanId, type PricingPlan } from '../config/brand';
+import { loadJson, saveJson } from '../lib/storage';
 
-export interface SubscriptionContextValue {
-  planId: PlanId;
-  isPro: boolean;
-  isTrialActive: boolean;
-  remainingSessionSeconds: number;
-  isSessionExpired: boolean;
-  dailyLocalVideosUsed: number;
-  maxDailyLocalVideos: number;
-  paywallVisible: boolean;
-  paywallReason: string | null;
-  openPaywall: (reason?: string) => void;
-  closePaywall: () => void;
-  purchasePlan: (planId: Exclude<PlanId, 'free'>, withTrial?: boolean) => void;
-  restorePurchases: () => boolean;
-  downgradeToFreeForTesting: () => void;
-  fastForwardFreeTimerForTesting: () => void;
-  resetFreeSessionTimer: () => void;
-  canUseQuality: (quality: VideoQuality) => boolean;
-  canUseAspectMode: (mode: AspectMode) => boolean;
-  recordLocalVideoCast: () => boolean;
+export interface PlanOffer extends PricingPlan {
+  /** Localised App Store price when the store answered, otherwise the configured list price. */
+  displayPrice: string;
+  fromStore: boolean;
 }
 
-const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
+interface SubscriptionContextValue {
+  isPro: boolean;
+  storeReady: boolean;
+  offers: PlanOffer[];
+  freeSecondsLeft: number;
+  paywallVisible: boolean;
+  paywallReason: string;
+  openPaywall: (reason?: string) => void;
+  closePaywall: () => void;
+  purchase: (planId: PlanId) => Promise<boolean>;
+  restore: () => Promise<boolean>;
+  manageSubscription: () => void;
+  setWatching: (watching: boolean) => void;
+}
 
-export const SubscriptionProvider: React.FC<{
-  children: React.ReactNode;
-  isCastingActive: boolean;
-}> = ({ children, isCastingActive }) => {
-  const [planId, setPlanId] = useState<PlanId>('free');
-  const [isTrialActive, setIsTrialActive] = useState<boolean>(false);
-  const [remainingSessionSeconds, setRemainingSessionSeconds] = useState<number>(
-    BRAND.freeLimits.maxSessionSeconds
-  );
-  const [dailyLocalVideosUsed, setDailyLocalVideosUsed] = useState<number>(1);
-  const [paywallVisible, setPaywallVisible] = useState<boolean>(false);
-  const [paywallReason, setPaywallReason] = useState<string | null>(null);
+const USAGE_KEY = 'parkcast.freeUsage.v2';
+const today = () => new Date().toISOString().slice(0, 10);
 
-  const isPro = planId !== 'free';
-  const isSessionExpired = !isPro && remainingSessionSeconds <= 0;
+const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
+
+const hasPro = (info: CustomerInfo | null | undefined) => Boolean(info?.entitlements.active[PRO_ENTITLEMENT_ID]);
+
+export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isPro, setIsPro] = useState(false);
+  const [storeReady, setStoreReady] = useState(false);
+  const [packages, setPackages] = useState<Record<string, PurchasesPackage>>({});
+  const [usedSeconds, setUsedSeconds] = useState(0);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [paywallReason, setPaywallReason] = useState('');
+  const [watching, setWatching] = useState(false);
+  const usageDate = useRef(today());
+
+  useEffect(() => {
+    loadJson(USAGE_KEY, { date: today(), usedSeconds: 0 }).then((usage) => {
+      if (usage.date === today()) setUsedSeconds(usage.usedSeconds);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !ENV.revenueCatIosKey) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        Purchases.configure({ apiKey: ENV.revenueCatIosKey });
+        Purchases.addCustomerInfoUpdateListener((info) => setIsPro(hasPro(info)));
+        const [info, offerings] = await Promise.all([Purchases.getCustomerInfo(), Purchases.getOfferings()]);
+        if (cancelled) return;
+        setIsPro(hasPro(info));
+        const byProduct: Record<string, PurchasesPackage> = {};
+        for (const pkg of offerings.current?.availablePackages ?? []) {
+          byProduct[pkg.product.identifier] = pkg;
+        }
+        setPackages(byProduct);
+        setStoreReady(true);
+      } catch {
+        setStoreReady(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isPro || !watching) return;
+    const interval = setInterval(() => {
+      setUsedSeconds((previous) => {
+        if (usageDate.current !== today()) {
+          usageDate.current = today();
+          previous = 0;
+        }
+        const next = previous + 1;
+        if (next % 10 === 0 || next >= FREE_SESSION_SECONDS) {
+          saveJson(USAGE_KEY, { date: usageDate.current, usedSeconds: next });
+        }
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPro, watching]);
+
+  const freeSecondsLeft = isPro ? Infinity : Math.max(0, FREE_SESSION_SECONDS - usedSeconds);
 
   const openPaywall = useCallback((reason?: string) => {
-    setPaywallReason(
-      reason || 'Upgrade to ParkCast Pro for unlimited 1080p/4K car streaming and full screen mirroring.'
-    );
+    setPaywallReason(reason ?? '');
     setPaywallVisible(true);
   }, []);
 
-  const closePaywall = useCallback(() => {
-    setPaywallVisible(false);
-  }, []);
+  const closePaywall = useCallback(() => setPaywallVisible(false), []);
 
-  // Countdown the 15-minute Free session timer while actively casting
-  useEffect(() => {
-    if (isPro || !isCastingActive) {
-      return;
-    }
-    const interval = setInterval(() => {
-      setRemainingSessionSeconds((prev) => {
-        if (prev <= 1) {
-          setPaywallReason(
-            'Your 15-minute Free Cast session has ended. Upgrade to ParkCast Pro for unlimited non-stop playback.'
-          );
-          setPaywallVisible(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+  const offers = useMemo<PlanOffer[]>(
+    () =>
+      PRICING_PLANS.map((plan) => {
+        const pkg = packages[plan.productId];
+        return { ...plan, displayPrice: pkg?.product.priceString ?? plan.price, fromStore: Boolean(pkg) };
+      }),
+    [packages]
+  );
 
-    return () => clearInterval(interval);
-  }, [isPro, isCastingActive]);
-
-  const purchasePlan = useCallback(
-    (targetPlan: Exclude<PlanId, 'free'>, withTrial = false) => {
-      // In Expo Go development mode, activate the selected plan immediately.
-      // When compiled with EAS Build + react-native-purchases, this calls Purchases.purchasePackage().
-      setPlanId(targetPlan);
-      setIsTrialActive(withTrial);
-      setRemainingSessionSeconds(BRAND.freeLimits.maxSessionSeconds);
-      setPaywallVisible(false);
-      setPaywallReason(null);
+  const purchase = useCallback(
+    async (planId: PlanId) => {
+      const plan = PRICING_PLANS.find((entry) => entry.id === planId);
+      const pkg = plan ? packages[plan.productId] : undefined;
+      if (!pkg) {
+        throw new Error(
+          storeReady
+            ? 'This plan is not available in the App Store yet. Please try another plan.'
+            : 'The App Store is not reachable right now. Check your connection and try again.'
+        );
+      }
+      try {
+        const result = await Purchases.purchasePackage(pkg);
+        const active = hasPro(result.customerInfo);
+        setIsPro(active);
+        if (active) setPaywallVisible(false);
+        return active;
+      } catch (error: any) {
+        if (error?.userCancelled) return false;
+        throw error;
+      }
     },
-    []
+    [packages, storeReady]
   );
 
-  const restorePurchases = useCallback(() => {
-    setPlanId('pro_annual');
-    setIsTrialActive(false);
-    setPaywallVisible(false);
-    return true;
+  const restore = useCallback(async () => {
+    if (!storeReady) throw new Error('The App Store is not reachable right now. Check your connection and try again.');
+    const info = await Purchases.restorePurchases();
+    const active = hasPro(info);
+    setIsPro(active);
+    if (active) setPaywallVisible(false);
+    return active;
+  }, [storeReady]);
+
+  const manageSubscription = useCallback(() => {
+    Linking.openURL('https://apps.apple.com/account/subscriptions').catch(() => {});
   }, []);
 
-  const downgradeToFreeForTesting = useCallback(() => {
-    setPlanId('free');
-    setIsTrialActive(false);
-    setRemainingSessionSeconds(BRAND.freeLimits.maxSessionSeconds);
-  }, []);
-
-  const fastForwardFreeTimerForTesting = useCallback(() => {
-    setPlanId('free');
-    setRemainingSessionSeconds(5);
-  }, []);
-
-  const resetFreeSessionTimer = useCallback(() => {
-    setRemainingSessionSeconds(BRAND.freeLimits.maxSessionSeconds);
-  }, []);
-
-  const canUseQuality = useCallback(
-    (quality: VideoQuality) => {
-      if (isPro) return true;
-      return BRAND.freeLimits.allowedQualities.includes(quality);
-    },
-    [isPro]
+  const value = useMemo(
+    () => ({
+      isPro,
+      storeReady,
+      offers,
+      freeSecondsLeft,
+      paywallVisible,
+      paywallReason,
+      openPaywall,
+      closePaywall,
+      purchase,
+      restore,
+      manageSubscription,
+      setWatching,
+    }),
+    [isPro, storeReady, offers, freeSecondsLeft, paywallVisible, paywallReason, openPaywall, closePaywall, purchase, restore, manageSubscription]
   );
 
-  const canUseAspectMode = useCallback(
-    (mode: AspectMode) => {
-      if (isPro) return true;
-      return mode === 'fit';
-    },
-    [isPro]
-  );
-
-  const recordLocalVideoCast = useCallback(() => {
-    if (isPro) return true;
-    if (dailyLocalVideosUsed >= BRAND.freeLimits.maxDailyLocalVideos) {
-      openPaywall(
-        `You have used all ${BRAND.freeLimits.maxDailyLocalVideos} daily local video casts on the Free plan. Upgrade to Pro for unlimited camera roll casting.`
-      );
-      return false;
-    }
-    setDailyLocalVideosUsed((prev) => prev + 1);
-    return true;
-  }, [isPro, dailyLocalVideosUsed, openPaywall]);
-
-  return (
-    <SubscriptionContext.Provider
-      value={{
-        planId,
-        isPro,
-        isTrialActive,
-        remainingSessionSeconds,
-        isSessionExpired,
-        dailyLocalVideosUsed,
-        maxDailyLocalVideos: BRAND.freeLimits.maxDailyLocalVideos,
-        paywallVisible,
-        paywallReason,
-        openPaywall,
-        closePaywall,
-        purchasePlan,
-        restorePurchases,
-        downgradeToFreeForTesting,
-        fastForwardFreeTimerForTesting,
-        resetFreeSessionTimer,
-        canUseQuality,
-        canUseAspectMode,
-        recordLocalVideoCast,
-      }}
-    >
-      {children}
-    </SubscriptionContext.Provider>
-  );
+  return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
 };
 
-export const useSubscription = (): SubscriptionContextValue => {
-  const ctx = useContext(SubscriptionContext);
-  if (!ctx) {
-    throw new Error('useSubscription must be used inside SubscriptionProvider');
-  }
-  return ctx;
-};
+export function useSubscription(): SubscriptionContextValue {
+  const context = useContext(SubscriptionContext);
+  if (!context) throw new Error('useSubscription must be used inside SubscriptionProvider');
+  return context;
+}

@@ -1,352 +1,150 @@
-import React, { useState } from 'react';
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  useWindowDimensions,
-  StatusBar,
-} from 'react-native';
-import { BRAND } from './src/config/brand';
-import { CastSessionProvider, useCastSession } from './src/context/CastSessionContext';
-import { SubscriptionProvider } from './src/context/SubscriptionContext';
-import { NavigationLandingScreen } from './src/screens/NavigationLandingScreen';
-import { DashboardScreen } from './src/screens/DashboardScreen';
-import { PlayerRemoteScreen } from './src/screens/PlayerRemoteScreen';
-import { CarReceiverScreen } from './src/screens/CarReceiverScreen';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
+import { SettingsProvider, useSettings } from './src/context/SettingsContext';
+import { LibraryProvider } from './src/context/LibraryContext';
+import { SubscriptionProvider, useSubscription } from './src/context/SubscriptionContext';
+import { CarProvider } from './src/context/CarContext';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { LibraryScreen } from './src/screens/LibraryScreen';
+import { MirrorScreen } from './src/screens/MirrorScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+import { BrowserScreen } from './src/screens/BrowserScreen';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { PaywallModal } from './src/screens/PaywallModal';
-import { VoiceCommandModal } from './src/screens/VoiceCommandModal';
+import { VoiceModal } from './src/screens/VoiceModal';
+import { NowPlayingBar } from './src/components/NowPlayingBar';
+import { initAds, maybeShowInterstitial } from './src/ads/ads';
+import { tap, type IconName } from './src/ui/components';
+import { colors, space } from './src/ui/theme';
+import type { TabId } from './src/navigation';
 
-type ViewLayoutMode = 'auto_split' | 'iphone_only' | 'car_only';
-export type PhoneTab = 'drive_map' | 'parked_lounge' | 'remote';
+const TABS: Array<{ id: TabId; label: string; icon: IconName; activeIcon: IconName }> = [
+  { id: 'home', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
+  { id: 'library', label: 'Library', icon: 'albums-outline', activeIcon: 'albums' },
+  { id: 'mirror', label: 'Mirror', icon: 'phone-portrait-outline', activeIcon: 'phone-portrait' },
+  { id: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
+];
 
-const ParkCastShell: React.FC = () => {
-  const { width } = useWindowDimensions();
-  const isWideScreen = width >= 900;
+const Shell: React.FC = () => {
+  const { settings, ready, update } = useSettings();
+  const { isPro } = useSubscription();
+  const [tab, setTab] = useState<TabId>('home');
+  const [browser, setBrowser] = useState<{ visible: boolean; url?: string }>({ visible: false });
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [pendingQuery, setPendingQuery] = useState<string | null>(null);
+  const previousTab = useRef<TabId>('home');
 
-  const [layoutMode, setLayoutMode] = useState<ViewLayoutMode>(
-    isWideScreen ? 'auto_split' : 'iphone_only'
-  );
-  // Default landing page is 'drive_map' (100% Apple CarPlay Navigation Reviewer Compliant)
-  const [phoneTab, setPhoneTab] = useState<PhoneTab>('drive_map');
-  const [voiceModalOpen, setVoiceModalOpen] = useState<boolean>(false);
+  useEffect(() => {
+    if (ready && settings.onboarded && !isPro) initAds().catch(() => {});
+  }, [ready, settings.onboarded, isPro]);
 
-  const {
-    connectionTarget,
-    isPlaying,
-    isParkedConfirmed,
-    carActiveTab,
-    setCarActiveTab,
-  } = useCastSession();
-
-  const isCastingActive =
-    connectionTarget !== 'disconnected' &&
-    isPlaying &&
-    isParkedConfirmed &&
-    carActiveTab !== 'map';
-
-  const effectiveMode: ViewLayoutMode =
-    layoutMode === 'auto_split' && !isWideScreen ? 'iphone_only' : layoutMode;
-
-  const renderActivePhoneScreen = () => {
-    if (phoneTab === 'drive_map') {
-      return (
-        <NavigationLandingScreen
-          onOpenParkedLounge={() => {
-            setCarActiveTab('library');
-            setPhoneTab('parked_lounge');
-          }}
-          onOpenVoiceModal={() => setVoiceModalOpen(true)}
-        />
-      );
-    }
-    if (phoneTab === 'parked_lounge') {
-      return <DashboardScreen onOpenRemote={() => setPhoneTab('remote')} />;
-    }
-    return (
-      <PlayerRemoteScreen
-        onBackToDashboard={() => setPhoneTab('parked_lounge')}
-      />
-    );
+  const switchTab = (next: TabId) => {
+    if (next === tab) return;
+    tap();
+    if (previousTab.current === 'library' && !isPro) maybeShowInterstitial().catch(() => {});
+    previousTab.current = next;
+    setTab(next);
   };
 
+  const openBrowser = (url?: string) => setBrowser({ visible: true, url });
+
+  if (!ready) {
+    return (
+      <View style={[styles.root, styles.center]}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!settings.onboarded) {
+    return <OnboardingScreen onDone={() => update({ onboarded: true })} />;
+  }
+
   return (
-    <SubscriptionProvider isCastingActive={isCastingActive}>
-      <SafeAreaView style={styles.safeRoot}>
-        <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <View style={styles.content}>
+        {tab === 'home' ? (
+          <HomeScreen
+            onNavigate={switchTab}
+            onOpenBrowser={openBrowser}
+            onOpenVoice={() => setVoiceOpen(true)}
+            pendingQuery={pendingQuery}
+            onPendingHandled={() => setPendingQuery(null)}
+          />
+        ) : null}
+        {tab === 'library' ? <LibraryScreen onOpenBrowser={openBrowser} /> : null}
+        {tab === 'mirror' ? <MirrorScreen /> : null}
+        {tab === 'settings' ? <SettingsScreen onShowOnboarding={() => update({ onboarded: false })} /> : null}
+      </View>
 
-        {/* Clean Top Navigation Bar */}
-        <View style={styles.modeBar}>
-          {isWideScreen && (
-            <View style={styles.modeBarLeft}>
-              <TouchableOpacity
-                testID="mode-split-btn"
-                style={[
-                  styles.modeChip,
-                  effectiveMode === 'auto_split' && styles.modeChipActive,
-                ]}
-                onPress={() => setLayoutMode('auto_split')}
-              >
-                <Text
-                  style={[
-                    styles.modeChipText,
-                    effectiveMode === 'auto_split' && styles.modeChipTextActive,
-                  ]}
-                >
-                  Phone + Car Preview
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                testID="mode-iphone-btn"
-                style={[
-                  styles.modeChip,
-                  effectiveMode === 'iphone_only' && styles.modeChipActive,
-                ]}
-                onPress={() => setLayoutMode('iphone_only')}
-              >
-                <Text
-                  style={[
-                    styles.modeChipText,
-                    effectiveMode === 'iphone_only' && styles.modeChipTextActive,
-                  ]}
-                >
-                  Phone Only
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                testID="mode-car-btn"
-                style={[
-                  styles.modeChip,
-                  effectiveMode === 'car_only' && styles.modeChipActive,
-                ]}
-                onPress={() => setLayoutMode('car_only')}
-              >
-                <Text
-                  style={[
-                    styles.modeChipText,
-                    effectiveMode === 'car_only' && styles.modeChipTextActive,
-                  ]}
-                >
-                  Car Screen Only
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+      <NowPlayingBar onOpen={() => switchTab('library')} />
 
-          {effectiveMode !== 'car_only' && (
-            <View style={styles.phoneNavTabs}>
-              <TouchableOpacity
-                testID="tab-drive-map-btn"
-                style={[
-                  styles.navTabBtn,
-                  phoneTab === 'drive_map' && styles.navTabBtnActive,
-                ]}
-                onPress={() => {
-                  setCarActiveTab('map');
-                  setPhoneTab('drive_map');
-                }}
-              >
-                <Text
-                  style={[
-                    styles.navTabText,
-                    phoneTab === 'drive_map' && styles.navTabTextActive,
-                  ]}
-                >
-                  🧭 Drive & Map
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                testID="tab-dashboard-btn"
-                style={[
-                  styles.navTabBtn,
-                  phoneTab === 'parked_lounge' && styles.navTabBtnActive,
-                ]}
-                onPress={() => {
-                  setCarActiveTab('library');
-                  setPhoneTab('parked_lounge');
-                }}
-              >
-                <Text
-                  style={[
-                    styles.navTabText,
-                    phoneTab === 'parked_lounge' && styles.navTabTextActive,
-                  ]}
-                >
-                  🍿 Parked Lounge
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                testID="tab-remote-btn"
-                style={[
-                  styles.navTabBtn,
-                  phoneTab === 'remote' && styles.navTabBtnActive,
-                ]}
-                onPress={() => setPhoneTab('remote')}
-              >
-                <Text
-                  style={[
-                    styles.navTabText,
-                    phoneTab === 'remote' && styles.navTabTextActive,
-                  ]}
-                >
-                  🕹️ Remote
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                testID="global-voice-btn"
-                style={styles.voiceMicPill}
-                onPress={() => setVoiceModalOpen(true)}
-              >
-                <Text style={styles.voiceMicPillText}>🎤</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Main Workspace Body */}
-        <View style={styles.workspaceBody}>
-          {effectiveMode === 'car_only' ? (
-            <View style={styles.fullCarPane}>
-              <CarReceiverScreen />
-            </View>
-          ) : effectiveMode === 'iphone_only' ? (
-            <View style={styles.singlePhonePane}>{renderActivePhoneScreen()}</View>
-          ) : (
-            <View style={styles.splitStudioContainer}>
-              <View style={styles.splitPhoneColumn}>
-                {renderActivePhoneScreen()}
-              </View>
-
-              <View style={styles.splitCarColumn}>
-                <CarReceiverScreen />
-              </View>
-            </View>
-          )}
-        </View>
-
-        <VoiceCommandModal
-          visible={voiceModalOpen}
-          onClose={() => setVoiceModalOpen(false)}
-          onSwitchPhoneTab={(t) => setPhoneTab(t)}
-        />
-        <PaywallModal />
+      <SafeAreaView edges={['bottom']} style={styles.tabBar}>
+        {TABS.map((item) => {
+          const active = item.id === tab;
+          return (
+            <Pressable
+              key={item.id}
+              style={styles.tab}
+              onPress={() => switchTab(item.id)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              testID={`tab-${item.id}`}
+            >
+              <Ionicons name={active ? item.activeIcon : item.icon} size={24} color={active ? colors.primary : colors.textMuted} />
+              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{item.label}</Text>
+            </Pressable>
+          );
+        })}
       </SafeAreaView>
-    </SubscriptionProvider>
+
+      <BrowserScreen visible={browser.visible} initialUrl={browser.url} onClose={() => setBrowser({ visible: false })} />
+      <VoiceModal
+        visible={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        onResult={(transcript) => {
+          setVoiceOpen(false);
+          setPendingQuery(transcript);
+          setTab('home');
+        }}
+      />
+      <PaywallModal />
+    </SafeAreaView>
   );
 };
 
 export default function App() {
   return (
-    <CastSessionProvider>
-      <ParkCastShell />
-    </CastSessionProvider>
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
+      <SettingsProvider>
+        <LibraryProvider>
+          <SubscriptionProvider>
+            <CarProvider>
+              <Shell />
+            </CarProvider>
+          </SubscriptionProvider>
+        </LibraryProvider>
+      </SettingsProvider>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  safeRoot: {
-    flex: 1,
-    backgroundColor: BRAND.colors.bgPrimary,
-  },
-  modeBar: {
+  root: { flex: 1, backgroundColor: colors.bg },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  content: { flex: 1 },
+  tabBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.colors.borderSubtle,
-    flexWrap: 'wrap',
-    gap: 8,
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: space(2),
   },
-  modeBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  modeChip: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  modeChipActive: {
-    backgroundColor: '#DBEAFE',
-  },
-  modeChipText: {
-    color: '#475569',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  modeChipTextActive: {
-    color: '#1D4ED8',
-  },
-  phoneNavTabs: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  navTabBtn: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  navTabBtnActive: {
-    backgroundColor: BRAND.colors.accentBlue,
-  },
-  navTabText: {
-    color: '#475569',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  navTabTextActive: {
-    color: '#FFFFFF',
-  },
-  voiceMicPill: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  voiceMicPillText: {
-    fontSize: 13,
-  },
-  workspaceBody: {
-    flex: 1,
-  },
-  fullCarPane: {
-    flex: 1,
-    padding: 14,
-  },
-  singlePhonePane: {
-    flex: 1,
-    maxWidth: 500,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  splitStudioContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    padding: 14,
-    gap: 16,
-  },
-  splitPhoneColumn: {
-    width: 420,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: BRAND.colors.borderSubtle,
-    overflow: 'hidden',
-    backgroundColor: BRAND.colors.bgPrimary,
-  },
-  splitCarColumn: {
-    flex: 1,
-  },
+  tab: { flex: 1, alignItems: 'center', gap: 2, paddingBottom: space(1) },
+  tabLabel: { fontSize: 11, fontWeight: '600', color: colors.textMuted },
+  tabLabelActive: { color: colors.primary },
 });
