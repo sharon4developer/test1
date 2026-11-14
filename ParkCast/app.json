@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "ParkCast: Car Video & Mirror",
+    "slug": "parkcast",
+    "version": "1.1.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F4F6FB"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.parkcast.carvideo.test",
+      "buildNumber": "12",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "ParkCast needs access to your photos and videos so you can display them on your car screen while parked.",
+        "NSLocalNetworkUsageDescription": "ParkCast uses your local network to connect and stream media to your car display and AirPlay receivers.",
+        "NSLocationWhenInUseUsageDescription": "ParkCast uses your location to display parked status, speed in MPH or KM/H, and turn-by-turn navigation on your car display.",
+        "UIBackgroundModes": ["audio", "location", "fetch"]
+      }
+    },
+    "plugins": [
+      "./plugins/withParkCastCarPlay"
+    ],
+    "android": {
+      "package": "com.parkcast.carvideo",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F4F6FB"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "owner": "dotnot",
+    "extra": {
+      "eas": {
+        "projectId": "427b8aaf-76c8-4a7e-847b-b5cabc0444aa"
+      }
+    }
+  }
+}
