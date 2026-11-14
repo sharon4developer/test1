@@ -35,7 +35,13 @@ final class CarSessionStore {
 
   func apply(_ newState: [String: Any]) {
     state = newState
-    mirror.setQuality(hd: (settings["mirrorQuality"] as? String) == "hd")
+    let level: UInt8
+    switch settings["mirrorQuality"] as? String {
+    case "hd": level = 2
+    case "standard": level = 1
+    default: level = 0
+    }
+    mirror.setQuality(level)
     carController?.apply(state: newState)
   }
 

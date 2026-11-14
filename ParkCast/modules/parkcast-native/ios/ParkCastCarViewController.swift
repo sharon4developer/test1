@@ -89,6 +89,9 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
   }
 
   private var glowEnabled: Bool { settings["glow"] as? Bool ?? true }
+  /// Free tier: video and photos are shown at 480p on the car.
+  private var basicQuality: Bool { (settings["quality"] as? String ?? "basic") == "basic" }
+  private static let basicMaxPixels: CGFloat = 480
 
   // MARK: Lifecycle
 
@@ -481,6 +484,10 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
     showMessage("Loading…")
     let item = AVPlayerItem(url: url)
     item.preferredForwardBufferDuration = 4
+    if basicQuality {
+      item.preferredMaximumResolution = CGSize(width: 854, height: 480)
+      item.preferredPeakBitRate = 1_200_000
+    }
     let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
       kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA),
     ])
@@ -509,7 +516,12 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
     let time = item.currentTime()
     guard output.hasNewPixelBuffer(forItemTime: time),
           let pixelBuffer = output.copyPixelBuffer(forItemTime: time, itemTimeForDisplay: nil) else { return }
-    let image = CIImage(cvPixelBuffer: pixelBuffer)
+    var image = CIImage(cvPixelBuffer: pixelBuffer)
+    let shortSide = min(image.extent.width, image.extent.height)
+    if basicQuality && shortSide > Self.basicMaxPixels {
+      let scale = Self.basicMaxPixels / shortSide
+      image = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+    }
     guard let cgImage = ciContext.createCGImage(image, from: image.extent) else { return }
     frameView.image = UIImage(cgImage: cgImage)
     frameView.isHidden = false
@@ -525,7 +537,7 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
     currentPhotoURI = uri
     photoView.image = nil
     showMessage("Loading…")
-    ParkCastCarViewController.loadImage(uri) { [weak self] image in
+    ParkCastCarViewController.loadImage(uri, maxPixels: basicQuality ? 854 : 2200) { [weak self] image in
       guard let self = self, self.currentPhotoURI == uri else { return }
       guard let image = image else {
         self.showMessage("This photo couldn't be opened.")
@@ -556,7 +568,7 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
   private func showSlide() {
     guard !slideshowItems.isEmpty else { return }
     let uri = slideshowItems[slideshowIndex % slideshowItems.count]
-    ParkCastCarViewController.loadImage(uri) { [weak self] image in
+    ParkCastCarViewController.loadImage(uri, maxPixels: basicQuality ? 854 : 2200) { [weak self] image in
       guard let self = self, let image = image, self.mode == "slideshow" else { return }
       self.hideMessage()
       self.photoView.layer.removeAllAnimations()
@@ -573,7 +585,7 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
     }
   }
 
-  private static func loadImage(_ uri: String, completion: @escaping (UIImage?) -> Void) {
+  private static func loadImage(_ uri: String, maxPixels: Int, completion: @escaping (UIImage?) -> Void) {
     DispatchQueue.global(qos: .userInitiated).async {
       var image: UIImage?
       if let url = URL(string: uri) {
@@ -589,7 +601,7 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
           let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: 2200,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixels,
           ]
           if let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
             image = UIImage(cgImage: cgImage)

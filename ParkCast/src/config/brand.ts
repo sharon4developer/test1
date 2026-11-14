@@ -27,6 +27,7 @@ export const BRAND = {
 
 export const PRO_FEATURES = [
   'Unlimited watching and mirroring',
+  'Full HD video and photos on the car (free is 480p)',
   'HD mirroring at 60 fps',
   'No ads',
   'Memories slideshows of any length',

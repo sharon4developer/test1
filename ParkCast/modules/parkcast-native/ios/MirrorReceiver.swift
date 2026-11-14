@@ -11,7 +11,7 @@ import UIKit
 /// Wire format (big endian): [type: UInt8][length: UInt32][payload]
 ///   type 1 = parameter sets: [spsLen: UInt16][sps][ppsLen: UInt16][pps]
 ///   type 2 = frame: [orientation: UInt8 (CGImagePropertyOrientation)][AVCC NAL units]
-/// The receiver replies with [0x10][quality] where quality 0 = standard, 1 = HD 60fps.
+/// The receiver replies with [0x10][quality] where quality 0 = basic 480p, 1 = standard, 2 = HD 60fps.
 final class MirrorReceiver {
   private let queue = DispatchQueue(label: "app.parkcast.mirror.receiver")
   private var listener: NWListener?
@@ -58,9 +58,8 @@ final class MirrorReceiver {
     newListener.start(queue: queue)
   }
 
-  func setQuality(hd: Bool) {
+  func setQuality(_ value: UInt8) {
     queue.async {
-      let value: UInt8 = hd ? 1 : 0
       guard value != self.quality else { return }
       self.quality = value
       self.sendConfig()

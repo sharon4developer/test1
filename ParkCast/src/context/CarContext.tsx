@@ -331,7 +331,8 @@ export const CarProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         statusOpacity: settings.statusOpacity,
         parkLock: true,
         sleepMinutes: settings.sleepMinutes,
-        mirrorQuality: isPro ? settings.mirrorQuality : 'standard',
+        mirrorQuality: isPro ? settings.mirrorQuality : 'basic',
+        quality: isPro ? 'full' : 'basic',
       },
       library: recents.slice(0, 20).map(({ id, kind, title, subtitle, uri, items }) => ({
         id,

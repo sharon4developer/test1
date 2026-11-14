@@ -79,15 +79,17 @@ export const MirrorScreen: React.FC = () => {
       </View>
 
       <Text style={[text.sectionLabel, styles.label]}>Quality</Text>
-      <Segmented
-        value={isPro ? settings.mirrorQuality : 'standard'}
+      <Segmented<'basic' | 'standard' | 'hd'>
+        value={isPro ? settings.mirrorQuality : 'basic'}
         options={[
-          { value: 'standard', label: 'Standard' },
+          ...(isPro ? [] : [{ value: 'basic' as const, label: 'Basic 480p' }]),
+          { value: 'standard', label: isPro ? 'Standard' : 'Full HD', locked: !isPro },
           { value: 'hd', label: 'HD 60 fps', locked: !isPro },
         ]}
         onChange={(value) => {
-          if (value === 'hd' && !isPro) {
-            openPaywall('HD 60 fps mirroring is part of Premium.');
+          if (value === 'basic') return;
+          if (!isPro) {
+            openPaywall('Sharp, smooth mirroring is part of Premium. Free mirroring is 480p.');
             return;
           }
           update({ mirrorQuality: value });

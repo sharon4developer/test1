@@ -12,9 +12,10 @@ class SampleHandler: RPBroadcastSampleHandler {
   private var isReady = false
   private var stopped = false
   private var encoder: VTCompressionSession?
-  private var encoderWidth = 0
-  private var encoderHeight = 0
-  private var hd = false
+  private var sourceWidth = 0
+  private var sourceHeight = 0
+  /// 0 = basic (free, 480p 24fps), 1 = standard (30fps), 2 = HD (60fps).
+  private var level: UInt8 = 0
   private var needsKeyFrame = true
   private var lastEncodeTime: CFTimeInterval = 0
   private var inFlight = 0
@@ -86,9 +87,9 @@ class SampleHandler: RPBroadcastSampleHandler {
         var index = 0
         while index + 1 < bytes.count {
           if bytes[index] == 0x10 {
-            let wantsHD = bytes[index + 1] == 1
-            if wantsHD != self.hd {
-              self.hd = wantsHD
+            let requested = min(bytes[index + 1], 2)
+            if requested != self.level {
+              self.level = requested
               self.teardownEncoder()
             }
           }
@@ -108,7 +109,7 @@ class SampleHandler: RPBroadcastSampleHandler {
   private func encode(_ sampleBuffer: CMSampleBuffer) {
     guard isReady, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
     let now = CACurrentMediaTime()
-    let fps: Double = hd ? 60 : 30
+    let fps = Double(frameRate)
     guard now - lastEncodeTime >= (1.0 / fps) * 0.9 else { return }
     if inFlight > 4 && !needsKeyFrame { return }
     lastEncodeTime = now
@@ -119,7 +120,7 @@ class SampleHandler: RPBroadcastSampleHandler {
 
     let width = CVPixelBufferGetWidth(pixelBuffer)
     let height = CVPixelBufferGetHeight(pixelBuffer)
-    if encoder == nil || width != encoderWidth || height != encoderHeight {
+    if encoder == nil || width != sourceWidth || height != sourceHeight {
       setupEncoder(width: width, height: height)
     }
     guard let session = encoder else { return }
@@ -143,13 +144,18 @@ class SampleHandler: RPBroadcastSampleHandler {
     }
   }
 
+  private var frameRate: Int { [24, 30, 60][Int(level)] }
+  private var bitRate: Int { [1_200_000, 3_000_000, 8_000_000][Int(level)] }
+
   private func setupEncoder(width: Int, height: Int) {
     teardownEncoder()
     var created: VTCompressionSession?
+    // VideoToolbox scales each frame down to the session size.
+    let scale = level == 0 ? min(1, 480 / Double(min(width, height))) : 1
     let status = VTCompressionSessionCreate(
       allocator: kCFAllocatorDefault,
-      width: Int32(width),
-      height: Int32(height),
+      width: Int32(Int(Double(width) * scale) & ~1),
+      height: Int32(Int(Double(height) * scale) & ~1),
       codecType: kCMVideoCodecType_H264,
       encoderSpecification: nil,
       imageBufferAttributes: nil,
@@ -162,13 +168,13 @@ class SampleHandler: RPBroadcastSampleHandler {
     VTSessionSetProperty(session, key: kVTCompressionPropertyKey_RealTime, value: kCFBooleanTrue)
     VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_High_AutoLevel)
     VTSessionSetProperty(session, key: kVTCompressionPropertyKey_AllowFrameReordering, value: kCFBooleanFalse)
-    VTSessionSetProperty(session, key: kVTCompressionPropertyKey_MaxKeyFrameInterval, value: NSNumber(value: hd ? 120 : 60))
-    VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ExpectedFrameRate, value: NSNumber(value: hd ? 60 : 30))
-    VTSessionSetProperty(session, key: kVTCompressionPropertyKey_AverageBitRate, value: NSNumber(value: hd ? 8_000_000 : 3_000_000))
+    VTSessionSetProperty(session, key: kVTCompressionPropertyKey_MaxKeyFrameInterval, value: NSNumber(value: frameRate * 2))
+    VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ExpectedFrameRate, value: NSNumber(value: frameRate))
+    VTSessionSetProperty(session, key: kVTCompressionPropertyKey_AverageBitRate, value: NSNumber(value: bitRate))
     VTCompressionSessionPrepareToEncodeFrames(session)
     encoder = session
-    encoderWidth = width
-    encoderHeight = height
+    sourceWidth = width
+    sourceHeight = height
     needsKeyFrame = true
   }
 
@@ -177,8 +183,8 @@ class SampleHandler: RPBroadcastSampleHandler {
       VTCompressionSessionInvalidate(session)
     }
     encoder = nil
-    encoderWidth = 0
-    encoderHeight = 0
+    sourceWidth = 0
+    sourceHeight = 0
   }
 
   // MARK: Sending

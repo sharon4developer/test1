@@ -96,7 +96,7 @@ function termsPage() {
 <h2>Safe use</h2>
 <p>Video, slideshows, websites and mirroring are for passengers or while parked. ParkCast pauses them automatically when it detects the car moving, but you remain responsible for obeying the law and driving safely.</p>
 <h2>ParkCast Premium</h2>
-<p>The free version includes ${pricing.freeSessionMinutes} minutes of watching per day. ParkCast Premium is an auto-renewing subscription:</p>
+<p>The free version includes ${pricing.freeSessionMinutes} minutes of watching or mirroring per day, at basic (480p) quality, with ads on the iPhone. ParkCast Premium is an auto-renewing subscription:</p>
 <ul>${planLines()}</ul>
 <p>Payment is charged to your Apple ID at confirmation of purchase. The subscription renews automatically unless cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the period. Any unused part of a free trial is forfeited when you buy a subscription. Manage or cancel in your App Store account settings.</p>
 <h2>Content</h2>
