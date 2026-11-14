@@ -70,6 +70,7 @@ class ParkCastCarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDeleg
 
   private func disconnect() {
     let store = CarSessionStore.shared
+    store.navigation.recordParking()
     store.navigation.detachMapTemplate()
     carController?.teardown()
     store.carController = nil
@@ -159,10 +160,78 @@ class ParkCastCarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDeleg
       screenItems.append(stop)
     }
 
-    var sections = [CPListSection(items: screenItems, header: "Screen", sectionIndexTitle: nil)]
+    let nearbyItems: [CPListItem] = NavigationEngine.nearbyCategories.map { category in
+      let item = CPListItem(text: category.title, detailText: nil, image: UIImage(systemName: Self.nearbySymbol(category.id)))
+      item.accessoryType = .disclosureIndicator
+      item.handler = { [weak self] _, completion in
+        self?.presentNearby(category, completion: completion)
+      }
+      return item
+    }
+
+    var sections = [
+      CPListSection(items: nearbyItems, header: "Find nearby", sectionIndexTitle: nil),
+      CPListSection(items: screenItems, header: "Screen", sectionIndexTitle: nil),
+    ]
     if !placeItems.isEmpty {
-      sections.insert(CPListSection(items: placeItems, header: "Recent places", sectionIndexTitle: nil), at: 0)
+      sections.insert(CPListSection(items: placeItems, header: "Recent places", sectionIndexTitle: nil), at: 1)
     }
     interfaceController.pushTemplate(CPListTemplate(title: "More", sections: sections), animated: true, completion: nil)
   }
+
+  private static func nearbySymbol(_ id: String) -> String {
+    switch id {
+    case "gas": return "fuelpump.fill"
+    case "ev": return "bolt.car.fill"
+    case "parking": return "parkingsign.circle.fill"
+    case "coffee": return "cup.and.saucer.fill"
+    case "food": return "fork.knife"
+    case "restroom": return "figure.dress.line.vertical.figure"
+    case "grocery": return "cart.fill"
+    case "pharmacy": return "cross.case.fill"
+    default: return "mappin.circle.fill"
+    }
+  }
+
+  private func presentNearby(_ category: NavigationEngine.NearbyCategory, completion: @escaping () -> Void) {
+    let store = CarSessionStore.shared
+    store.navigation.searchNearby(category.id) { [weak self] results, error in
+      completion()
+      guard let self = self, let interfaceController = self.interfaceController else { return }
+      var items: [CPListItem] = (results ?? []).map { place in
+        let name = place["name"] as? String ?? category.title
+        let distance = (place["distance"] as? Double).map {
+          MeasurementFormatter.parkCast.string(from: NavigationEngine.measurement($0))
+        }
+        let detail = [distance, place["address"] as? String].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+        let item = CPListItem(text: name, detailText: detail)
+        item.handler = { [weak interfaceController] _, done in
+          if let latitude = place["latitude"] as? Double, let longitude = place["longitude"] as? Double {
+            store.navigation.routeAndStart(latitude: latitude, longitude: longitude, name: name)
+            store.emit("onCarCommand", ["type": "navigatePlace", "name": name])
+          }
+          interfaceController?.popToRootTemplate(animated: true, completion: nil)
+          done()
+        }
+        return item
+      }
+      if items.isEmpty {
+        let empty = CPListItem(text: error ?? "Nothing found nearby", detailText: error == nil ? "Try another category" : nil)
+        empty.handler = { _, done in done() }
+        items = [empty]
+      }
+      let template = CPListTemplate(title: category.title, sections: [CPListSection(items: items)])
+      interfaceController.pushTemplate(template, animated: true, completion: nil)
+    }
+  }
+}
+
+extension MeasurementFormatter {
+  static let parkCast: MeasurementFormatter = {
+    let formatter = MeasurementFormatter()
+    formatter.unitOptions = .providedUnit
+    formatter.numberFormatter.maximumFractionDigits = 1
+    formatter.unitStyle = .short
+    return formatter
+  }()
 }

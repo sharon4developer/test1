@@ -60,6 +60,7 @@ interface CarContextValue {
   stop: () => void;
   requestLocation: () => Promise<boolean>;
   searchPlaces: (query: string) => Promise<PlaceResult[]>;
+  searchNearby: (category: string) => Promise<PlaceResult[]>;
   planRoute: (place: PlaceResult) => Promise<void>;
   startRoute: (index: number) => Promise<void>;
   clearPlannedRoute: () => void;
@@ -358,6 +359,7 @@ export const CarProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useWebScreenRelay(settings.webScreen, settings.webScreenCode, webPayload);
 
   const searchPlaces = useCallback((query: string) => ParkCastNative.searchPlaces(query), []);
+  const searchNearby = useCallback((category: string) => ParkCastNative.searchNearby(category), []);
 
   const planRoute = useCallback(async (place: PlaceResult) => {
     const options = await ParkCastNative.getRoutes(place);
@@ -437,6 +439,7 @@ export const CarProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       stop,
       requestLocation,
       searchPlaces,
+      searchNearby,
       planRoute,
       startRoute,
       clearPlannedRoute: () => setPlannedRoute(null),
@@ -468,6 +471,7 @@ export const CarProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       stop,
       requestLocation,
       searchPlaces,
+      searchNearby,
       planRoute,
       startRoute,
       endRoute,

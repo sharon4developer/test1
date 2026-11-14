@@ -2,6 +2,7 @@ import ExpoModulesCore
 import UIKit
 import ReplayKit
 import WebKit
+import UserNotifications
 
 public class ParkCastNativeModule: Module {
   public func definition() -> ModuleDefinition {
@@ -14,7 +15,8 @@ public class ParkCastNativeModule: Module {
       "onParkState",
       "onRouteProgress",
       "onSpeech",
-      "onMirrorStatus"
+      "onMirrorStatus",
+      "onParkedCar"
     )
 
     OnCreate {
@@ -55,6 +57,57 @@ public class ParkCastNativeModule: Module {
           promise.resolve(results as Any)
         }
       }
+    }
+
+    AsyncFunction("searchNearby") { (category: String, promise: Promise) in
+      DispatchQueue.main.async {
+        CarSessionStore.shared.navigation.searchNearby(category) { results, error in
+          if let results = results {
+            promise.resolve(results as Any)
+          } else {
+            promise.reject("ERR_NEARBY", error ?? "Search failed.")
+          }
+        }
+      }
+    }
+
+    Function("getParkedCar") { () -> [String: Any]? in
+      CarSessionStore.shared.navigation.parkedCar
+    }
+
+    AsyncFunction("saveParkedCarHere") { (promise: Promise) in
+      DispatchQueue.main.async {
+        promise.resolve(CarSessionStore.shared.navigation.saveParkedCarHere() as Any)
+      }
+    }
+
+    Function("clearParkedCar") {
+      DispatchQueue.main.async {
+        CarSessionStore.shared.navigation.clearParkedCar()
+      }
+    }
+
+    AsyncFunction("scheduleReminder") { (seconds: Double, title: String, body: String, promise: Promise) in
+      let center = UNUserNotificationCenter.current()
+      center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+        guard granted else {
+          promise.resolve(false as Any)
+          return
+        }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(60, seconds), repeats: false)
+        center.removePendingNotificationRequests(withIdentifiers: [ReminderIds.meter])
+        center.add(UNNotificationRequest(identifier: ReminderIds.meter, content: content, trigger: trigger)) { error in
+          promise.resolve((error == nil) as Any)
+        }
+      }
+    }
+
+    Function("cancelReminder") {
+      UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [ReminderIds.meter])
     }
 
     AsyncFunction("getRoutes") { (latitude: Double, longitude: Double, name: String, promise: Promise) in
@@ -116,6 +169,10 @@ public class ParkCastNativeModule: Module {
       }
     }
   }
+}
+
+enum ReminderIds {
+  static let meter = "parkcast.meter"
 }
 
 enum BroadcastPicker {

@@ -14,7 +14,8 @@ export type SmartCommand =
   | 'unitsKmh'
   | 'unitsMph'
   | 'endRoute'
-  | 'premium';
+  | 'premium'
+  | 'parkedCar';
 
 export type SearchIntent =
   | { type: 'empty' }
@@ -25,6 +26,7 @@ export type SearchIntent =
   | { type: 'search'; query: string };
 
 const COMMANDS: Array<[RegExp, SmartCommand]> = [
+  [/^(where('s| is| did i leave) my car|where did i park|find my car|take me (back )?to my car)$/, 'parkedCar'],
   [/^(end|stop|cancel) (the )?(route|navigation|directions|trip)$/, 'endRoute'],
   [/^(start )?(mirror|mirroring)( my)?( (screen|phone|iphone))?$|^screen ?mirror(ing)?$/, 'mirror'],
   [/^(play|show|start)( my)? last( (video|photo|thing))?$/, 'playLast'],

@@ -97,31 +97,128 @@ final class NavigationEngine: NSObject, CLLocationManagerDelegate {
 
   // MARK: Search and routing
 
+  private var searchCenter: CLLocation? { lastLocation ?? manager.location }
+
   func searchPlaces(_ query: String, completion: @escaping ([[String: Any]]) -> Void) {
     let request = MKLocalSearch.Request()
     request.naturalLanguageQuery = query
-    if let location = lastLocation {
+    if let location = searchCenter {
       request.region = MKCoordinateRegion(center: location.coordinate, latitudinalMeters: 60_000, longitudinalMeters: 60_000)
     }
     MKLocalSearch(request: request).start { [weak self] response, _ in
-      let items = response?.mapItems ?? []
-      var results: [[String: Any]] = []
-      for (index, item) in items.prefix(12).enumerated() {
-        let coordinate = item.placemark.coordinate
-        var entry: [String: Any] = [
-          "id": "\(index)-\(coordinate.latitude),\(coordinate.longitude)",
-          "name": item.name ?? "",
-          "address": NavigationEngine.address(item.placemark),
-          "latitude": coordinate.latitude,
-          "longitude": coordinate.longitude,
-        ]
-        if let here = self?.lastLocation, let there = item.placemark.location {
-          entry["distance"] = here.distance(from: there)
-        }
-        results.append(entry)
-      }
+      let results = self?.serialize(response?.mapItems ?? [], sortByDistance: false) ?? []
       DispatchQueue.main.async { completion(results) }
     }
+  }
+
+  // MARK: Nearby
+
+  struct NearbyCategory {
+    let id: String
+    let title: String
+    let query: String
+    let categories: [MKPointOfInterestCategory]
+  }
+
+  static let nearbyCategories: [NearbyCategory] = [
+    NearbyCategory(id: "gas", title: "Gas", query: "gas station", categories: [.gasStation]),
+    NearbyCategory(id: "ev", title: "EV charging", query: "EV charging station", categories: [.evCharger]),
+    NearbyCategory(id: "parking", title: "Parking", query: "parking", categories: [.parking]),
+    NearbyCategory(id: "coffee", title: "Coffee", query: "coffee", categories: [.cafe, .bakery]),
+    NearbyCategory(id: "food", title: "Food", query: "restaurant", categories: [.restaurant]),
+    NearbyCategory(id: "restroom", title: "Restrooms", query: "restroom", categories: [.restroom]),
+    NearbyCategory(id: "grocery", title: "Groceries", query: "grocery store", categories: [.foodMarket]),
+    NearbyCategory(id: "pharmacy", title: "Pharmacy", query: "pharmacy", categories: [.pharmacy]),
+  ]
+
+  func searchNearby(_ categoryId: String, completion: @escaping ([[String: Any]]?, String?) -> Void) {
+    guard let category = Self.nearbyCategories.first(where: { $0.id == categoryId }) else {
+      completion(nil, "Unknown category.")
+      return
+    }
+    guard let location = searchCenter else {
+      completion(nil, "ParkCast needs your location to find places nearby.")
+      return
+    }
+    let request = MKLocalSearch.Request()
+    request.naturalLanguageQuery = category.query
+    request.resultTypes = .pointOfInterest
+    request.pointOfInterestFilter = MKPointOfInterestFilter(including: category.categories)
+    request.region = MKCoordinateRegion(center: location.coordinate, latitudinalMeters: 16_000, longitudinalMeters: 16_000)
+    MKLocalSearch(request: request).start { [weak self] response, _ in
+      let results = self?.serialize(response?.mapItems ?? [], sortByDistance: true) ?? []
+      DispatchQueue.main.async { completion(results, nil) }
+    }
+  }
+
+  private func serialize(_ items: [MKMapItem], sortByDistance: Bool) -> [[String: Any]] {
+    let here = searchCenter
+    var results: [[String: Any]] = items.enumerated().map { index, item in
+      let coordinate = item.placemark.coordinate
+      var entry: [String: Any] = [
+        "id": "\(index)-\(coordinate.latitude),\(coordinate.longitude)",
+        "name": item.name ?? "",
+        "address": NavigationEngine.address(item.placemark),
+        "latitude": coordinate.latitude,
+        "longitude": coordinate.longitude,
+      ]
+      if let here = here, let there = item.placemark.location {
+        entry["distance"] = here.distance(from: there)
+      }
+      return entry
+    }
+    if sortByDistance {
+      results.sort { ($0["distance"] as? Double ?? .infinity) < ($1["distance"] as? Double ?? .infinity) }
+    }
+    return Array(results.prefix(12))
+  }
+
+  // MARK: Parked car
+
+  private static let parkedCarKey = "parkcast.parkedCar"
+
+  var parkedCar: [String: Any]? { UserDefaults.standard.dictionary(forKey: Self.parkedCarKey) }
+
+  /// Called when CarPlay disconnects, which is normally the moment the driver turns the car off.
+  func recordParking() {
+    guard let location = searchCenter,
+          Date().timeIntervalSince(location.timestamp) < 300,
+          location.horizontalAccuracy >= 0, location.horizontalAccuracy < 150 else { return }
+    saveParkedCar(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, source: "car")
+  }
+
+  func saveParkedCar(latitude: Double, longitude: Double, source: String) {
+    var entry: [String: Any] = [
+      "latitude": latitude,
+      "longitude": longitude,
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "source": source,
+      "address": "",
+    ]
+    UserDefaults.standard.set(entry, forKey: Self.parkedCarKey)
+    CarSessionStore.shared.emit("onParkedCar", entry)
+    CLGeocoder().reverseGeocodeLocation(CLLocation(latitude: latitude, longitude: longitude)) { placemarks, _ in
+      guard let placemark = placemarks?.first else { return }
+      let street = [placemark.subThoroughfare, placemark.thoroughfare].compactMap { $0 }.joined(separator: " ")
+      let address = [street, placemark.locality ?? ""].filter { !$0.isEmpty }.joined(separator: ", ")
+      DispatchQueue.main.async {
+        guard let current = self.parkedCar, current["timestamp"] as? Double == entry["timestamp"] as? Double else { return }
+        entry["address"] = address
+        UserDefaults.standard.set(entry, forKey: Self.parkedCarKey)
+        CarSessionStore.shared.emit("onParkedCar", entry)
+      }
+    }
+  }
+
+  func saveParkedCarHere() -> Bool {
+    guard let location = searchCenter, location.horizontalAccuracy >= 0 else { return false }
+    saveParkedCar(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, source: "manual")
+    return true
+  }
+
+  func clearParkedCar() {
+    UserDefaults.standard.removeObject(forKey: Self.parkedCarKey)
+    CarSessionStore.shared.emit("onParkedCar", ["cleared": true])
   }
 
   static func address(_ placemark: MKPlacemark) -> String {

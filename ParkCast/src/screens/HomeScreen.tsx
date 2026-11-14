@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCar } from '../context/CarContext';
 import { useLibrary } from '../context/LibraryContext';
@@ -14,6 +14,9 @@ import { colors, radius, space, text } from '../ui/theme';
 import { CarStatusCard } from '../components/CarStatusCard';
 import { GuidanceBanner } from '../components/GuidanceBanner';
 import { AdBanner } from '../ads/ads';
+import { ParkedCarCard } from '../components/ParkedCarCard';
+import { NEARBY_CATEGORIES } from '../config/nearby';
+import { ParkCastNative } from '../native/ParkCastNative';
 import type { TabId } from '../navigation';
 
 const appIcon = require('../../assets/icon.png');
@@ -48,14 +51,41 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [query, setQuery] = useState('');
   const [searchedFor, setSearchedFor] = useState('');
   const [results, setResults] = useState<PlaceResult[] | null>(null);
+  const [nearbyMode, setNearbyMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
   const say = (message: string) => setNotice(message);
 
+  const findNearby = useCallback(
+    async (categoryId: string, label: string) => {
+      tap();
+      setSearchedFor(label);
+      setNearbyMode(true);
+      car.clearPlannedRoute();
+      setResults([]);
+      if (car.locationStatus !== 'granted' && !(await car.requestLocation())) {
+        say('Allow location to find places near you.');
+        setResults(null);
+        return;
+      }
+      setBusy(true);
+      try {
+        setResults(await car.searchNearby(categoryId));
+      } catch (error: any) {
+        say(error?.message ?? 'Search failed.');
+        setResults([]);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [car]
+  );
+
   const findPlaces = useCallback(
     async (placeQuery: string) => {
       setSearchedFor(placeQuery);
+      setNearbyMode(false);
       car.clearPlannedRoute();
       if (!car.nativeAvailable) {
         setResults([]);
@@ -137,6 +167,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           car.endRoute();
           say('Route ended');
           break;
+        case 'parkedCar': {
+          const parked = ParkCastNative.getParkedCar();
+          if (parked) {
+            Linking.openURL(`http://maps.apple.com/?daddr=${parked.latitude},${parked.longitude}&dirflg=w`).catch(() => {});
+          } else {
+            say('No parking spot saved yet');
+          }
+          break;
+        }
       }
     },
     [car, onNavigate, openPaywall, pickMemories, update]
@@ -228,7 +267,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {showingSearch ? (
         <View style={styles.block}>
           <View style={styles.resultsHeader}>
-            <Text style={text.sectionLabel}>{car.plannedRoute ? 'Routes' : `Results for “${searchedFor}”`}</Text>
+            <Text style={text.sectionLabel}>
+              {car.plannedRoute ? 'Routes' : nearbyMode ? `${searchedFor} near you` : `Results for “${searchedFor}”`}
+            </Text>
             <Pressable onPress={clearSearch} hitSlop={12}>
               <Text style={styles.link}>Close</Text>
             </Pressable>
@@ -290,7 +331,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   onPress={() => choosePlace(place)}
                 />
               ))}
-              {!results.length ? (
+              {!results.length && !nearbyMode ? (
                 <ListRow
                   icon="map"
                   title={car.nativeAvailable ? 'No places found nearby' : 'Search in Apple Maps'}
@@ -302,27 +343,58 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   }
                 />
               ) : null}
-              <ListRow
-                icon="logo-youtube"
-                iconColor="#FF0000"
-                title={`YouTube: ${searchedFor}`}
-                onPress={() => onOpenBrowser(youtubeSearchUrl(searchedFor))}
-                chevron
-              />
-              <ListRow
-                icon="globe-outline"
-                title={`Search the web for “${searchedFor}”`}
-                onPress={() => onOpenBrowser(`https://www.google.com/search?q=${encodeURIComponent(searchedFor)}`)}
-                chevron
-                last
-              />
+              {nearbyMode ? (
+                !results.length ? <ListRow icon="search" title={`No ${searchedFor.toLowerCase()} found nearby`} last /> : null
+              ) : (
+                <>
+                  <ListRow
+                    icon="logo-youtube"
+                    iconColor="#FF0000"
+                    title={`YouTube: ${searchedFor}`}
+                    onPress={() => onOpenBrowser(youtubeSearchUrl(searchedFor))}
+                    chevron
+                  />
+                  <ListRow
+                    icon="globe-outline"
+                    title={`Search the web for “${searchedFor}”`}
+                    onPress={() => onOpenBrowser(`https://www.google.com/search?q=${encodeURIComponent(searchedFor)}`)}
+                    chevron
+                    last
+                  />
+                </>
+              )}
             </Card>
           ) : null}
         </View>
       ) : (
         <>
+          {car.nativeAvailable ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.nearbyRow}
+              contentContainerStyle={{ gap: space(2) }}
+            >
+              {NEARBY_CATEGORIES.map((category) => (
+                <Pressable
+                  key={category.id}
+                  testID={`nearby-${category.id}`}
+                  style={styles.nearbyChip}
+                  onPress={() => findNearby(category.id, category.label)}
+                >
+                  <Ionicons name={category.icon} size={16} color={category.color} />
+                  <Text style={styles.placeChipText}>{category.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
+
           <View style={styles.block}>
             <CarStatusCard />
+          </View>
+
+          <View style={styles.block}>
+            <ParkedCarCard />
           </View>
 
           <View style={[styles.block, { gap: space(3) }]}>
@@ -424,4 +496,16 @@ const styles = StyleSheet.create({
     maxWidth: 220,
   },
   placeChipText: { color: colors.text, fontWeight: '600' },
+  nearbyRow: { marginTop: space(4), marginHorizontal: -space(5), paddingHorizontal: space(5) },
+  nearbyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: space(4),
+    paddingVertical: space(2.5),
+  },
 });

@@ -5,7 +5,7 @@ import { useCar } from '../context/CarContext';
 import { Button } from '../ui/components';
 import { colors, radius, space, text } from '../ui/theme';
 
-const EXAMPLES = ['"Navigate to the nearest Starbucks"', '"Mirror my phone"', '"Play my last video"', '"YouTube lofi music"'];
+const EXAMPLES = ['"Navigate to the nearest Starbucks"', '"Mirror my phone"', '"Where did I park?"', '"YouTube lofi music"'];
 
 export const VoiceModal: React.FC<{ visible: boolean; onClose: () => void; onResult: (transcript: string) => void }> = ({
   visible,

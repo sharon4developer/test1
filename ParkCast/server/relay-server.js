@@ -78,7 +78,7 @@ function privacyPage() {
 <h2>What stays on your iPhone</h2>
 <p>Photos, videos, screen mirroring, browsing and voice commands are processed on your iPhone and sent to your car over CarPlay. They are not uploaded to ParkCast servers. Voice recognition runs on-device when your iPhone supports it.</p>
 <h2>Location</h2>
-<p>Your location is used on your iPhone to show directions, local weather and to pause video while the car is moving. To show the weather, approximate coordinates are sent to Open-Meteo. Location is never stored by ParkCast.</p>
+<p>Your location is used on your iPhone to show directions, local weather and to pause video while the car is moving. To show the weather, approximate coordinates are sent to Open-Meteo. When CarPlay disconnects, ParkCast saves where you parked on your iPhone only, so you can walk back to your car; you can clear it any time. Location is never sent to ParkCast servers.</p>
 <h2>Web screen (optional)</h2>
 <p>If you turn on Web screen, the title and address of web videos you send to the car are relayed through our server to the screen that entered your code. Nothing is kept after the session ends.</p>
 <h2>Purchases</h2>

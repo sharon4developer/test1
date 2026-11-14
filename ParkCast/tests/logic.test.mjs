@@ -24,6 +24,8 @@ test('smart search understands commands', () => {
   assert.deepEqual(parseSmartSearch('end route'), { type: 'command', command: 'endRoute' });
   assert.deepEqual(parseSmartSearch('switch to miles'), { type: 'command', command: 'unitsMph' });
   assert.deepEqual(parseSmartSearch('show memories'), { type: 'command', command: 'memories' });
+  assert.deepEqual(parseSmartSearch('Where did I park?'), { type: 'command', command: 'parkedCar' });
+  assert.deepEqual(parseSmartSearch("where's my car"), { type: 'command', command: 'parkedCar' });
 });
 
 test('smart search understands video and links', () => {
@@ -95,4 +97,12 @@ test('Expo config wires CarPlay, mirroring and the native module', () => {
   assert.ok(fs.existsSync(path.join(root, 'modules/parkcast-native/ios/ParkCastCarPlaySceneDelegate.swift')));
   assert.ok(fs.existsSync(path.join(root, 'plugins/broadcast/SampleHandler.swift')));
   assert.equal(app.ios.infoPlist.NSLocationWhenInUseUsageDescription.length > 20, true);
+});
+
+test('nearby categories match the native list', () => {
+  const swift = fs.readFileSync(path.join(root, 'modules/parkcast-native/ios/NavigationEngine.swift'), 'utf8');
+  const native = [...swift.matchAll(/NearbyCategory\(id: "([a-z]+)"/g)].map((match) => match[1]);
+  const js = [...fs.readFileSync(path.join(root, 'src/config/nearby.ts'), 'utf8').matchAll(/\{ id: '([a-z]+)'/g)].map((match) => match[1]);
+  assert.ok(native.length >= 6);
+  assert.deepEqual(js, native);
 });

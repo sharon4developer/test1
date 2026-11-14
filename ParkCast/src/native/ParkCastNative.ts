@@ -12,6 +12,14 @@ export interface PlaceResult {
   distance?: number;
 }
 
+export interface ParkedCar {
+  latitude: number;
+  longitude: number;
+  timestamp: number;
+  source: 'car' | 'manual';
+  address: string;
+}
+
 export interface RouteStep {
   instructions: string;
   distance: number;
@@ -62,6 +70,12 @@ interface ParkCastNativeModule {
   sendCarState(state: Record<string, unknown>): void;
   control(action: string, value: number): void;
   searchPlaces(query: string): Promise<PlaceResult[]>;
+  searchNearby(category: string): Promise<PlaceResult[]>;
+  getParkedCar(): ParkedCar | null;
+  saveParkedCarHere(): Promise<boolean>;
+  clearParkedCar(): void;
+  scheduleReminder(seconds: number, title: string, body: string): Promise<boolean>;
+  cancelReminder(): void;
   getRoutes(latitude: number, longitude: number, name: string): Promise<RouteOption[]>;
   startNavigation(index: number): Promise<boolean>;
   stopNavigation(): Promise<void>;
@@ -92,6 +106,25 @@ export const ParkCastNative = {
   },
   async searchPlaces(query: string): Promise<PlaceResult[]> {
     return native ? native.searchPlaces(query) : [];
+  },
+  async searchNearby(category: string): Promise<PlaceResult[]> {
+    if (!native) throw new Error('Nearby search needs the ParkCast iPhone app.');
+    return native.searchNearby(category);
+  },
+  getParkedCar(): ParkedCar | null {
+    return native ? native.getParkedCar() : null;
+  },
+  async saveParkedCarHere(): Promise<boolean> {
+    return native ? native.saveParkedCarHere() : false;
+  },
+  clearParkedCar() {
+    native?.clearParkedCar();
+  },
+  async scheduleReminder(seconds: number, title: string, body: string): Promise<boolean> {
+    return native ? native.scheduleReminder(seconds, title, body) : false;
+  },
+  cancelReminder() {
+    native?.cancelReminder();
   },
   async getRoutes(place: PlaceResult): Promise<RouteOption[]> {
     if (!native) throw new Error('Directions need the ParkCast iPhone app.');
