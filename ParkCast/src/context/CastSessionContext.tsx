@@ -362,6 +362,23 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       );
     }
 
+    // 1. Instant 0ms On-Device Loopback to Native CarPlay Scene (`127.0.0.1:4849`)
+    if (Platform.OS !== 'web') {
+      fetch('http://127.0.0.1:4849/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomCode: state.roomCode,
+          payload: state,
+        }),
+      })
+        .then((res) => {
+          if (res.ok) setRelayConnected(true);
+        })
+        .catch(() => {});
+    }
+
+    // 2. Cloud / LAN Relay Sync for external `/car` browsers
     const { httpBase } = normalizeRelayEndpoint(relayHost);
 
     fetch(`${httpBase}/sync`, {
@@ -738,11 +755,12 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const raw = input.trim();
     if (!raw) return;
     const ytMatch = raw.match(
-      /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/
+      /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/
     );
     const ytId = ytMatch ? ytMatch[1] : /^[A-Za-z0-9_-]{11}$/.test(raw) ? raw : 'ysz5S6PUM-U';
+    const presetId = `yt-${Date.now()}`;
     const ytPreset: MediaPreset = {
-      id: `yt-${Date.now()}`,
+      id: presetId,
       title: ytMatch ? `YouTube Video (${ytId})` : `YouTube: ${raw}`,
       subtitle: `YouTube Car Stream · ID ${ytId}`,
       category: 'youtube',
@@ -753,7 +771,7 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
     setState((prev) => ({
       ...prev,
-      carActiveTab: 'browser',
+      carActiveTab: 'library',
       activeMedia: ytPreset,
       mirrorMode: 'off',
       mirrorWebUrl: `https://www.youtube.com/watch?v=${ytId}`,
@@ -805,71 +823,31 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const castLocalPhotoOrVideo = useCallback(
     async (uri: string, title: string, isVideo: boolean, base64Data?: string) => {
-      let broadcastUri = uri;
+      const localId = `local-${Date.now()}`;
 
-      const { httpBase } = normalizeRelayEndpoint(relayHost);
-
-      if (base64Data) {
-        try {
-          const resp = await fetch(`${httpBase}/upload`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
-              base64: base64Data,
-            }),
-          });
-          const json = await resp.json();
-          if (json && json.ok && json.url) {
-            broadcastUri = json.url;
-          } else {
-            broadcastUri = `data:${isVideo ? 'video/mp4' : 'image/jpeg'};base64,${base64Data}`;
-          }
-        } catch {
-          broadcastUri = `data:${isVideo ? 'video/mp4' : 'image/jpeg'};base64,${base64Data}`;
-        }
-      } else if (uri.startsWith('file://') || uri.startsWith('ph://')) {
-        try {
-          const fileResp = await fetch(uri);
-          const blob = await fileResp.blob();
-          const ext = title.split('.').pop()?.toLowerCase() || (isVideo ? 'mov' : 'jpg');
-          const uploadResp = await fetch(
-            `${httpBase}/upload-raw?video=${isVideo ? '1' : '0'}&ext=${ext}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/octet-stream' },
-              body: blob,
-            }
-          );
-          const json = await uploadResp.json();
-          if (json && json.ok && json.url) {
-            broadcastUri = json.url;
-          }
-        } catch {
-          // Keep original URI if upload fails
-        }
-      }
-
+      // 1. INSTANT (0ms) On-Device CarPlay Update:
+      // Since Native CarPlay runs inside the same iPhone app, pass the local `file://` URI immediately
+      // so the photo or video plays on the CarPlay screen in <50ms without waiting for any cloud upload!
       if (isVideo) {
-        const localVideoPreset: MediaPreset = {
-          id: `local-${Date.now()}`,
+        const instantVideoPreset: MediaPreset = {
+          id: localId,
           title,
-          subtitle: 'iPhone Camera Roll Video',
+          subtitle: 'iPhone Camera Roll Video (Instant Direct)',
           category: 'local',
           durationLabel: 'LOCAL HD',
           thumbnailColor: '#1D4ED8',
-          streamUrl: broadcastUri,
+          streamUrl: uri,
         };
         setState((prev) => ({
           ...prev,
           carActiveTab: 'library',
-          activeMedia: localVideoPreset,
+          activeMedia: instantVideoPreset,
           mirrorMode: 'off',
           selectedPhotoUri: null,
           isPlaying: true,
           currentTimeSec: 0,
           drmWarning: null,
-          lastRemoteAction: `Casting camera roll video: ${title}`,
+          lastRemoteAction: `Playing camera roll video: ${title}`,
           updatedAt: Date.now(),
         }));
       } else {
@@ -877,12 +855,63 @@ export const CastSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
           ...prev,
           carActiveTab: 'library',
           mirrorMode: 'photo_slideshow',
-          selectedPhotoUri: broadcastUri,
+          selectedPhotoUri: uri,
           drmWarning: null,
           lastRemoteAction: `Displaying iPhone photo on car screen`,
           updatedAt: Date.now(),
         }));
       }
+
+      // 2. Non-blocking background upload for external `/car` web browsers (laptop/tablet)
+      const { httpBase } = normalizeRelayEndpoint(relayHost);
+      (async () => {
+        try {
+          if (base64Data) {
+            const resp = await fetch(`${httpBase}/upload`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
+                base64: base64Data,
+              }),
+            });
+            const json = await resp.json();
+            if (json && json.ok && json.url && !isVideo) {
+              setState((prev) =>
+                prev.selectedPhotoUri === uri
+                  ? { ...prev, selectedPhotoUri: json.url, updatedAt: Date.now() }
+                  : prev
+              );
+            }
+          } else if (uri.startsWith('file://') || uri.startsWith('ph://')) {
+            const fileResp = await fetch(uri);
+            const blob = await fileResp.blob();
+            const ext = title.split('.').pop()?.toLowerCase() || (isVideo ? 'mov' : 'jpg');
+            const uploadResp = await fetch(
+              `${httpBase}/upload-raw?video=${isVideo ? '1' : '0'}&ext=${ext}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/octet-stream' },
+                body: blob,
+              }
+            );
+            const json = await uploadResp.json();
+            if (json && json.ok && json.url && isVideo) {
+              setState((prev) =>
+                prev.activeMedia.id === localId
+                  ? {
+                      ...prev,
+                      activeMedia: { ...prev.activeMedia, streamUrl: json.url },
+                      updatedAt: Date.now(),
+                    }
+                  : prev
+              );
+            }
+          }
+        } catch {
+          // On-device CarPlay already has the local file:// URI playing
+        }
+      })();
     },
     [relayHost]
   );

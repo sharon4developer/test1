@@ -120,9 +120,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenRemote }
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: asVideo ? ['videos'] : ['images'],
-        quality: 0.75,
-        base64: !asVideo,
-        videoExportPreset: ImagePicker.VideoExportPreset.MediumQuality,
+        quality: 0.85,
+        base64: false,
+        videoExportPreset: ImagePicker.VideoExportPreset.Passthrough,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
