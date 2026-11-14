@@ -3,7 +3,7 @@ import SwiftIfConfig
 import SwiftSyntax
 
 /// Walks a parsed source file and records top-level declarations carrying `@ExpoModule`, `@JS`,
-/// `@SharedObject`, or `@Record`. Only file-scope declarations are considered: these macros apply to
+/// `@SharedObject`, `@Record`, `@Union`, `@ExpoView`, or `@ViewProps`. Only file-scope declarations are considered: these macros apply to
 /// top-level types, so descending into type and function bodies would only surface false positives.
 /// Recognition mirrors the macros themselves — a purely syntactic match on the spelled attribute
 /// name — so it sees the same declarations the compiler would hand the plugin, without compiling
@@ -119,7 +119,7 @@ final class DetectionVisitor: SyntaxVisitor {
   ) {
     for element in attributes {
       guard let attribute = element.as(AttributeSyntax.self),
-        let macro = DetectedMacro(rawValue: attribute.attributeName.trimmedDescription),
+        let macro = DetectedMacro(rawValue: attributeName(of: attribute)),
         detectedMacros.contains(macro)
       else {
         continue
@@ -132,6 +132,7 @@ final class DetectionVisitor: SyntaxVisitor {
           declarationKind: kind,
           accessLevel: accessLevel(of: modifiers),
           jsName: stringArgument(of: attribute),
+          genericArgument: genericArgument(of: attribute),
           arguments: arguments(of: attribute),
           file: file,
           line: location.line,
@@ -153,6 +154,44 @@ private func accessLevel(of modifiers: DeclModifierListSyntax) -> String {
     return modifier.name.text
   }
   return "internal"
+}
+
+/// The attribute's name without a generic argument clause, so `@ExpoView<CardProps>` is `ExpoView`. A
+/// name qualified with the module that declares the macros is read without the module, so
+/// `@ExpoModulesCore.ExpoView<CardProps>` is `ExpoView` too.
+func attributeName(of attribute: AttributeSyntax) -> String {
+  if let identifier = attribute.attributeName.as(IdentifierTypeSyntax.self) {
+    return identifier.name.text
+  }
+  if let member = attribute.attributeName.as(MemberTypeSyntax.self),
+    member.baseType.as(IdentifierTypeSyntax.self)?.name.text == macrosModuleName
+  {
+    return member.name.text
+  }
+  return attribute.attributeName.trimmedDescription
+}
+
+/// The module that declares the macros, which an attribute may be qualified with:
+/// `@ExpoModulesCore.ExpoView<CardProps>`.
+let macrosModuleName = "ExpoModulesCore"
+
+/// The first generic argument of the attribute as written, e.g. `@ExpoView<CardProps>` -> "CardProps".
+/// Returns `nil` when the attribute has no generic argument clause.
+private func genericArgument(of attribute: AttributeSyntax) -> String? {
+  return genericArgumentType(of: attribute)?.trimmedDescription
+}
+
+/// The first generic argument of the attribute, `CardProps` in `@ExpoView<CardProps>` and in
+/// `@ExpoModulesCore.ExpoView<CardProps>`, or `nil` when the attribute has no generic argument clause.
+/// Like `genericArgument(of:)` in `ExpoViewMacro`.
+func genericArgumentType(of attribute: AttributeSyntax) -> TypeSyntax? {
+  let clause =
+    attribute.attributeName.as(IdentifierTypeSyntax.self)?.genericArgumentClause
+    ?? attribute.attributeName.as(MemberTypeSyntax.self)?.genericArgumentClause
+  guard let first = clause?.arguments.first, case .type(let type) = first.argument else {
+    return nil
+  }
+  return type
 }
 
 /// Every argument passed to the attribute, in source order, each as a label (or `nil` when

@@ -6,11 +6,6 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F7F8FB"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.parkcast.carvideo.test",
@@ -21,7 +16,10 @@
         "NSLocationWhenInUseUsageDescription": "ParkCast uses your location to show where you are on the car map, give turn-by-turn directions, show your speed and pause video while the car is moving.",
         "NSMicrophoneUsageDescription": "ParkCast listens only while you hold the microphone button so you can say where to go or what to play.",
         "NSSpeechRecognitionUsageDescription": "ParkCast turns your spoken request into an action, on your iPhone whenever possible.",
-        "UIBackgroundModes": ["audio", "location"]
+        "UIBackgroundModes": [
+          "audio",
+          "location"
+        ]
       }
     },
     "plugins": [
@@ -46,6 +44,17 @@
         "expo-tracking-transparency",
         {
           "userTrackingPermission": "This lets ParkCast show ads that are more relevant to you. Premium removes all ads."
+        }
+      ],
+      "expo-font",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#F7F8FB",
+          "imageWidth": 200,
+          "resizeMode": "contain"
         }
       ]
     ],
