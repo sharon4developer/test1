@@ -61,6 +61,7 @@ export type CarCommand =
   | { type: 'fill'; value: boolean }
   | { type: 'playLibraryItem'; id: string }
   | { type: 'navigatePlace'; name: string }
+  | { type: 'openWeb'; uri: string; title: string }
   | { type: 'ended' }
   | { type: 'sleepEnded' };
 
@@ -102,6 +103,9 @@ interface ParkCastNativeModule {
   logEvent(event: string): void;
   sendCarState(state: Record<string, unknown>): void;
   control(action: string, value: number): void;
+  carWebPointer(action: string, x: number, y: number): void;
+  carWebType(text: string, submit: boolean): void;
+  carWebNavigate(action: string): void;
   searchPlaces(query: string): Promise<PlaceResult[]>;
   suggestPlaces(query: string): Promise<PlaceSuggestion[]>;
   resolveSuggestion(id: string): Promise<PlaceResult[]>;
@@ -178,6 +182,16 @@ export const ParkCastNative = {
   },
   control(action: 'seekBy' | 'seekTo' | 'nextSlide', value = 0) {
     native?.control(action, value);
+  },
+  /** Drives the pointer on the car's web page: move by (dx, dy), click, or scroll by (dx, dy). */
+  carWebPointer(action: 'move' | 'click' | 'scroll', dx = 0, dy = 0) {
+    native?.carWebPointer(action, dx, dy);
+  },
+  carWebType(text: string, submit = false) {
+    native?.carWebType(text, submit);
+  },
+  carWebNavigate(action: 'back' | 'forward' | 'reload') {
+    native?.carWebNavigate(action);
   },
   async searchPlaces(query: string): Promise<PlaceResult[]> {
     return native ? native.searchPlaces(query) : [];

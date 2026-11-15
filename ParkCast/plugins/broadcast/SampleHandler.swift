@@ -14,7 +14,7 @@ class SampleHandler: RPBroadcastSampleHandler {
   private var encoder: VTCompressionSession?
   private var sourceWidth = 0
   private var sourceHeight = 0
-  /// 0 = basic (free, 480p 24fps), 1 = standard (30fps), 2 = HD (60fps).
+  /// 0 = basic (free, 480p 24fps), 1 = High (1080p 30fps), 2 = Ultra (1080p 60fps).
   private var level: UInt8 = 0
   private var needsKeyFrame = true
   private var lastEncodeTime: CFTimeInterval = 0
@@ -145,13 +145,14 @@ class SampleHandler: RPBroadcastSampleHandler {
   }
 
   private var frameRate: Int { [24, 30, 60][Int(level)] }
-  private var bitRate: Int { [1_200_000, 3_000_000, 8_000_000][Int(level)] }
+  private var bitRate: Int { [1_200_000, 6_000_000, 10_000_000][Int(level)] }
+  private var maxShortSide: Double { [480, 1080, 1080][Int(level)] }
 
   private func setupEncoder(width: Int, height: Int) {
     teardownEncoder()
     var created: VTCompressionSession?
     // VideoToolbox scales each frame down to the session size.
-    let scale = level == 0 ? min(1, 480 / Double(min(width, height))) : 1
+    let scale = min(1, maxShortSide / Double(min(width, height)))
     let status = VTCompressionSessionCreate(
       allocator: kCFAllocatorDefault,
       width: Int32(Int(Double(width) * scale) & ~1),

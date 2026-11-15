@@ -53,14 +53,20 @@ class ParkCastCarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDeleg
     map.automaticallyHidesNavigationBar = false
     map.leadingNavigationBarButtons = [
       CPBarButton(title: "Map") { [weak controller] _ in controller?.showModeFromCar("map") },
-      CPBarButton(title: "Watch") { [weak self] _ in self?.presentWatchList() },
+      CPBarButton(title: "Library") { [weak self] _ in self?.presentWatchList() },
     ]
     map.trailingNavigationBarButtons = [
+      CPBarButton(title: "Browser") { [weak self] _ in self?.presentBrowserList() },
       CPBarButton(title: "Mirror") { [weak controller] _ in controller?.showModeFromCar("mirror") },
-      CPBarButton(title: "More") { [weak self] _ in self?.presentMoreList() },
     ]
+    let more = CPMapButton { [weak self] _ in self?.presentMoreList() }
+    more.image = UIImage(systemName: "ellipsis.circle.fill")
+    let clock = CPMapButton { [weak controller] _ in controller?.showModeFromCar("home") }
+    clock.image = UIImage(systemName: "clock.fill")
+    map.mapButtons = [more, clock]
     controller.onStageModeChanged = { [weak map] onStage in
       map?.automaticallyHidesNavigationBar = onStage
+      map?.mapButtons.forEach { $0.isHidden = onStage }
     }
     mapTemplate = map
     interfaceController.setRootTemplate(map, animated: false, completion: nil)
@@ -116,11 +122,50 @@ class ParkCastCarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDeleg
       completion()
     }
 
-    let template = CPListTemplate(title: "Watch", sections: [
+    let template = CPListTemplate(title: "Library", sections: [
       CPListSection(items: mediaItems, header: "Recent on your iPhone", sectionIndexTitle: nil),
       CPListSection(items: [playPause, fit], header: "Controls", sectionIndexTitle: nil),
     ])
     interfaceController.pushTemplate(template, animated: true, completion: nil)
+  }
+
+  private func presentBrowserList() {
+    guard let interfaceController = interfaceController, let controller = carController else { return }
+    let store = CarSessionStore.shared
+    let favorites = store.state["favorites"] as? [[String: Any]] ?? []
+    let recentWeb = (store.state["library"] as? [[String: Any]] ?? []).filter { $0["kind"] as? String == "web" }
+
+    func item(_ title: String, _ detail: String?, _ uri: String) -> CPListItem {
+      let entry = CPListItem(text: title, detailText: detail)
+      entry.handler = { [weak controller, weak interfaceController] _, completion in
+        controller?.openWebFromCar(uri: uri, title: title)
+        interfaceController?.popToRootTemplate(animated: true, completion: nil)
+        completion()
+      }
+      return entry
+    }
+
+    var sections: [CPListSection] = []
+    let recentItems = recentWeb.prefix(5).compactMap { entry -> CPListItem? in
+      guard let uri = entry["uri"] as? String, !uri.isEmpty else { return nil }
+      return item(entry["title"] as? String ?? "Web page", entry["subtitle"] as? String, uri)
+    }
+    if !recentItems.isEmpty {
+      sections.append(CPListSection(items: recentItems, header: "Recent", sectionIndexTitle: nil))
+    }
+    let favoriteItems = favorites.compactMap { entry -> CPListItem? in
+      guard let uri = entry["url"] as? String, let title = entry["title"] as? String else { return nil }
+      return item(title, nil, uri)
+    }
+    if !favoriteItems.isEmpty {
+      sections.append(CPListSection(items: favoriteItems, header: "Sites", sectionIndexTitle: nil))
+    }
+    if sections.isEmpty {
+      let hint = CPListItem(text: "Open ParkCast on your iPhone", detailText: "Sites appear here once the app is running")
+      hint.handler = { _, completion in completion() }
+      sections = [CPListSection(items: [hint])]
+    }
+    interfaceController.pushTemplate(CPListTemplate(title: "Browser", sections: sections), animated: true, completion: nil)
   }
 
   private func presentMoreList() {

@@ -75,6 +75,24 @@ public class ParkCastNativeModule: Module {
       }
     }
 
+    Function("carWebPointer") { (action: String, x: Double, y: Double) in
+      DispatchQueue.main.async {
+        CarSessionStore.shared.carController?.webPointer(action: action, x: x, y: y)
+      }
+    }
+
+    Function("carWebType") { (text: String, submit: Bool) in
+      DispatchQueue.main.async {
+        CarSessionStore.shared.carController?.webType(text: text, submit: submit)
+      }
+    }
+
+    Function("carWebNavigate") { (action: String) in
+      DispatchQueue.main.async {
+        CarSessionStore.shared.carController?.webNavigate(action: action)
+      }
+    }
+
     AsyncFunction("suggestPlaces") { (query: String, promise: Promise) in
       DispatchQueue.main.async {
         CarSessionStore.shared.navigation.suggest(query) { results in

@@ -104,8 +104,8 @@ export const MirrorScreen: React.FC = () => {
         value={isPro ? settings.mirrorQuality : 'basic'}
         options={[
           ...(isPro ? [] : [{ value: 'basic' as const, label: 'Basic 480p' }]),
-          { value: 'standard', label: isPro ? 'Standard' : 'Full HD', locked: !isPro },
-          { value: 'hd', label: 'HD 60 fps', locked: !isPro },
+          { value: 'standard', label: 'High 1080p', locked: !isPro },
+          { value: 'hd', label: 'Ultra 60 fps', locked: !isPro },
         ]}
         onChange={(value) => {
           if (value === 'basic') return;

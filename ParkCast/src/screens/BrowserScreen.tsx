@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView as BaseWebView, type WebViewNavigation } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,9 @@ import { useCar } from '../context/CarContext';
 import { useSettings } from '../context/SettingsContext';
 import { AD_BLOCK_CSS, AD_HOST_PATTERNS, BROWSER_FAVORITES } from '../config/browser';
 import { carFriendlyUrl, normalizeUrl, parseSmartSearch } from '../lib/smartSearch';
-import { Button, IconButton } from '../ui/components';
+import { Button, IconButton, Segmented } from '../ui/components';
+import { CarTrackpad } from '../components/CarTrackpad';
+import { ParkCastNative } from '../native/ParkCastNative';
 import { colors, radius, space, text } from '../ui/theme';
 
 const WebView = BaseWebView<{}>;
@@ -65,12 +67,24 @@ export const BrowserScreen: React.FC<{ visible: boolean; initialUrl?: string; on
   };
 
   const castingThis = car.mode === 'web' && car.media?.kind === 'web';
+  const [view, setView] = useState<'car' | 'phone'>('car');
+
+  useEffect(() => {
+    if (castingThis) setView('car');
+  }, [castingThis, car.media?.uri]);
+
+  const showTrackpad = castingThis && view === 'car';
 
   const watchInCar = () => {
     if (!url) return;
     const target = carFriendlyUrl(url);
     const started = car.play({ kind: 'web', uri: target, title: title || hostOf(target), subtitle: hostOf(target) });
-    if (started) webRef.current?.injectJavaScript(PAUSE_PHONE_VIDEO);
+    if (!started) return;
+    webRef.current?.injectJavaScript(PAUSE_PHONE_VIDEO);
+    ParkCastNative.logEvent(`watch in car: ${hostOf(target)} (car ${car.carConnected ? 'connected' : 'not connected'})`);
+    if (car.nativeAvailable && !car.carConnected) {
+      Alert.alert('Open ParkCast on your car', 'Connect CarPlay and tap ParkCast on the car screen. The page starts there automatically.');
+    }
   };
 
   return (
@@ -103,7 +117,22 @@ export const BrowserScreen: React.FC<{ visible: boolean; initialUrl?: string; on
           />
         </View>
 
-        <View style={{ flex: 1 }}>
+        {castingThis ? (
+          <View style={styles.viewToggle}>
+            <Segmented<'car' | 'phone'>
+              value={view}
+              options={[
+                { value: 'car', label: 'Car trackpad' },
+                { value: 'phone', label: 'iPhone page' },
+              ]}
+              onChange={setView}
+            />
+          </View>
+        ) : null}
+
+        {showTrackpad ? <CarTrackpad moving={car.moving} /> : null}
+
+        <View style={[{ flex: 1 }, showTrackpad && styles.hidden]}>
           {url ? (
             <WebView
               ref={webRef}
@@ -207,6 +236,8 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
+  viewToggle: { paddingHorizontal: space(4), paddingBottom: space(2) },
+  hidden: { display: 'none' },
   remote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space(3) },
   castingNote: { textAlign: 'center', color: colors.textSecondary, fontSize: 13, marginTop: space(2), fontWeight: '600' },
 });

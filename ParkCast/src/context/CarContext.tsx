@@ -12,6 +12,7 @@ import {
 } from '../native/ParkCastNative';
 import { ENV } from '../config/env';
 import { FREE_LIMIT_REACHED } from '../config/brand';
+import { BROWSER_FAVORITES } from '../config/browser';
 import { fetchWeather, formatWeather, type WeatherNow } from '../lib/weather';
 import { greetingFor } from '../lib/format';
 import { useSettings, type NavApp } from './SettingsContext';
@@ -171,6 +172,9 @@ export const CarProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [addRecent, hasFreeTime, openPaywall]
   );
 
+  const playRef = useRef(play);
+  playRef.current = play;
+
   const playLast = useCallback(() => {
     const last = recentsRef.current[0];
     return last ? play(last) : false;
@@ -250,6 +254,11 @@ export const CarProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           case 'sleepEnded':
             updateSettings({ sleepMinutes: 0 });
             break;
+          case 'openWeb': {
+            const host = command.uri.replace(/^https?:\/\//i, '').split('/')[0];
+            playRef.current({ kind: 'web', uri: command.uri, title: command.title || host, subtitle: host });
+            break;
+          }
           case 'playLibraryItem': {
             const item = recentsRef.current.find((entry) => entry.id === command.id);
             if (item) {
@@ -344,6 +353,7 @@ export const CarProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         items: items ?? [],
       })),
       places,
+      favorites: BROWSER_FAVORITES.map(({ title, url }) => ({ title, url })),
     }),
     [mode, media, playing, fill, greeting, weatherText, settings, isPro, recents, places]
   );

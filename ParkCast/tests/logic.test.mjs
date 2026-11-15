@@ -152,6 +152,23 @@ test('Home shows nearby chips always, live suggestions, and Navigate above Mirro
   assert.ok(fs.existsSync(path.join(root, 'src/components/NavMap.web.tsx')), 'web needs a map fallback');
 });
 
+test('car browser is driven from the iPhone trackpad, with Library/Browser/Mirror on the car', () => {
+  const module = fs.readFileSync(path.join(root, 'modules/parkcast-native/ios/ParkCastNativeModule.swift'), 'utf8');
+  for (const fn of ['carWebPointer', 'carWebType', 'carWebNavigate']) assert.match(module, new RegExp(`Function\\("${fn}"\\)`));
+  const car = fs.readFileSync(path.join(root, 'modules/parkcast-native/ios/ParkCastCarViewController.swift'), 'utf8');
+  for (const fn of ['func webPointer(', 'func webType(', 'func webNavigate(', 'func openWebFromCar(']) assert.ok(car.includes(fn), fn);
+  const scene = fs.readFileSync(path.join(root, 'modules/parkcast-native/ios/ParkCastCarPlaySceneDelegate.swift'), 'utf8');
+  for (const title of ['"Map"', '"Library"', '"Browser"', '"Mirror"']) assert.ok(scene.includes(`CPBarButton(title: ${title})`), title);
+  const browser = fs.readFileSync(path.join(root, 'src/screens/BrowserScreen.tsx'), 'utf8');
+  assert.match(browser, /<CarTrackpad /);
+});
+
+test('mirroring presets: free 480p, Premium High 1080p30 and Ultra 1080p60', () => {
+  const handler = fs.readFileSync(path.join(root, 'plugins/broadcast/SampleHandler.swift'), 'utf8');
+  assert.match(handler, /frameRate: Int \{ \[24, 30, 60\]/);
+  assert.match(handler, /maxShortSide: Double \{ \[480, 1080, 1080\]/);
+});
+
 test('native module sources are committed, so EAS builds include them', (t) => {
   let tracked;
   try {

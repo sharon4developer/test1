@@ -52,6 +52,11 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
   private let mirrorView = UIImageView()
   private var webView: WKWebView?
   private let messageLabel = UILabel()
+  private let pointerView = UIView()
+  private var pointer = CGPoint(x: -1, y: -1)
+  private var pointerHideTimer: Timer?
+  private let toastLabel = PaddedLabel()
+  private var toastTimer: Timer?
 
   private let statusBar = PaddedLabel()
   private let parkBanner = PaddedLabel()
@@ -221,6 +226,19 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
     messageLabel.numberOfLines = 0
     messageLabel.isHidden = true
     stageView.addSubview(messageLabel)
+
+    pointerView.frame = CGRect(x: 0, y: 0, width: 26, height: 26)
+    pointerView.backgroundColor = UIColor(white: 1, alpha: 0.92)
+    pointerView.layer.cornerRadius = 13
+    pointerView.layer.borderWidth = 2
+    pointerView.layer.borderColor = UIColor(white: 0, alpha: 0.7).cgColor
+    pointerView.layer.shadowColor = UIColor.black.cgColor
+    pointerView.layer.shadowOpacity = 0.5
+    pointerView.layer.shadowRadius = 4
+    pointerView.layer.shadowOffset = .zero
+    pointerView.isUserInteractionEnabled = false
+    pointerView.isHidden = true
+    stageView.addSubview(pointerView)
   }
 
   private func buildOverlays() {
@@ -248,6 +266,26 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
     locatingPill.clipsToBounds = true
     locatingPill.isHidden = CarSessionStore.shared.navigation.lastLocation != nil
     view.addSubview(locatingPill)
+
+    toastLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+    toastLabel.textColor = .white
+    toastLabel.numberOfLines = 2
+    toastLabel.textAlignment = .center
+    toastLabel.backgroundColor = UIColor(white: 0, alpha: 0.75)
+    toastLabel.layer.cornerRadius = 14
+    toastLabel.clipsToBounds = true
+    toastLabel.isHidden = true
+    view.addSubview(toastLabel)
+  }
+
+  private func showToast(_ text: String, seconds: TimeInterval = 5) {
+    toastLabel.text = text
+    toastLabel.isHidden = false
+    toastTimer?.invalidate()
+    toastTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in
+      self?.toastLabel.isHidden = true
+    }
+    view.setNeedsLayout()
   }
 
   override func viewDidLayoutSubviews() {
@@ -289,6 +327,16 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
 
     let pillSize = locatingPill.intrinsicContentSize
     locatingPill.frame = CGRect(x: content.midX - pillSize.width / 2, y: content.maxY - pillSize.height - 18, width: pillSize.width, height: pillSize.height)
+
+    let toastWidth = min(content.width - 40, max(200, toastLabel.intrinsicContentSize.width))
+    let toastHeight = toastLabel.sizeThatFits(CGSize(width: toastWidth, height: 80)).height + 14
+    toastLabel.frame = CGRect(x: content.midX - toastWidth / 2, y: content.maxY - toastHeight - 18, width: toastWidth, height: toastHeight)
+
+    if pointer.x >= 0 {
+      pointer = CGPoint(x: min(pointer.x, stageView.bounds.width), y: min(pointer.y, stageView.bounds.height))
+      pointerView.center = pointer
+    }
+    stageView.bringSubviewToFront(pointerView)
   }
 
   // MARK: State from the phone
@@ -396,6 +444,7 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
     if mode != "slideshow" { photoView.transform = .identity }
     mirrorView.isHidden = mode != "mirror"
     webView?.isHidden = mode != "web"
+    if mode != "web" { pointerView.isHidden = true }
     parkBanner.isHidden = !lockedByMotion
     locatingPill.isHidden = !(mapView.isHidden == false && CarSessionStore.shared.navigation.lastLocation == nil) || lockedByMotion
 
@@ -667,6 +716,7 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
     DiagnosticsLog.shared.record("car web: opening \(DiagnosticsLog.host(of: uri))")
     showMessage("Opening…")
     ensureWebView().load(URLRequest(url: url))
+    showToast("Use ParkCast on your iPhone as a trackpad: Browser › Car trackpad", seconds: 7)
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -691,6 +741,133 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
     DiagnosticsLog.shared.record("car web: web content process ended, reloading")
     webView.reload()
   }
+
+  // MARK: iPhone trackpad for the car browser
+  // CarPlay does not pass touches to a navigation app's car window, so the page is driven from the phone.
+
+  func openWebFromCar(uri: String, title: String) {
+    wantsPlaying = true
+    load(media: ["uri": uri], for: "web")
+    setMode("web", notify: false)
+    CarSessionStore.shared.emit("onCarCommand", ["type": "openWeb", "uri": uri, "title": title])
+  }
+
+  func webPointer(action: String, x: Double, y: Double) {
+    guard mode == "web", let web = webView, !lockedByMotion else { return }
+    let bounds = stageView.bounds
+    if pointer.x < 0 { pointer = CGPoint(x: bounds.midX, y: bounds.midY) }
+    switch action {
+    case "move":
+      pointer = CGPoint(
+        x: min(max(0, pointer.x + CGFloat(x)), bounds.width),
+        y: min(max(0, pointer.y + CGFloat(y)), bounds.height)
+      )
+      revealPointer()
+    case "click":
+      revealPointer()
+      let scale = max(web.scrollView.zoomScale, 0.01)
+      let px = Double(pointer.x / scale)
+      let py = Double(pointer.y / scale)
+      web.evaluateJavaScript("window.__pcPaused=false;(\(Self.jsClick))(\(px),\(py))")
+      UIView.animate(withDuration: 0.08, animations: {
+        self.pointerView.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)
+      }, completion: { _ in
+        UIView.animate(withDuration: 0.12) { self.pointerView.transform = .identity }
+      })
+    case "scroll":
+      revealPointer()
+      let scale = max(web.scrollView.zoomScale, 0.01)
+      web.evaluateJavaScript("(\(Self.jsScroll))(\(Double(pointer.x / scale)),\(Double(pointer.y / scale)),\(x),\(y))")
+    default:
+      break
+    }
+  }
+
+  func webType(text: String, submit: Bool) {
+    guard mode == "web", let web = webView,
+          let data = try? JSONSerialization.data(withJSONObject: [text]),
+          let json = String(data: data, encoding: .utf8) else { return }
+    web.evaluateJavaScript("(\(Self.jsType))(\(json)[0],\(submit ? "true" : "false"))")
+  }
+
+  func webNavigate(action: String) {
+    guard let web = webView else { return }
+    switch action {
+    case "back": if web.canGoBack { web.goBack() }
+    case "forward": if web.canGoForward { web.goForward() }
+    case "reload": web.reload()
+    default: break
+    }
+  }
+
+  private func revealPointer() {
+    pointerView.center = pointer
+    pointerView.isHidden = false
+    stageView.bringSubviewToFront(pointerView)
+    pointerHideTimer?.invalidate()
+    pointerHideTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
+      self?.pointerView.isHidden = true
+    }
+  }
+
+  private static let jsClick = #"""
+  function(x, y) {
+    var el = document.elementFromPoint(x, y);
+    if (!el) return;
+    var base = { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, view: window, button: 0 };
+    function fire(type) {
+      var Ctor = type.indexOf('pointer') === 0 && window.PointerEvent ? PointerEvent : MouseEvent;
+      var init = Object.assign({ pointerId: 1, pointerType: 'touch', isPrimary: true }, base);
+      el.dispatchEvent(new Ctor(type, init));
+    }
+    ['pointerdown', 'mousedown', 'pointerup', 'mouseup'].forEach(fire);
+    if (typeof el.click === 'function') { el.click(); } else { fire('click'); }
+    var target = el.closest ? el.closest('input,textarea,select,[contenteditable="true"]') : null;
+    if (target && target.focus) target.focus();
+    if (el.tagName === 'VIDEO') { if (el.paused) { el.play().catch(function(){}); } }
+  }
+  """#
+
+  private static let jsScroll = #"""
+  function(x, y, dx, dy) {
+    var el = document.elementFromPoint(x, y);
+    while (el && el !== document.body && el !== document.documentElement) {
+      var style = getComputedStyle(el);
+      var canY = /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight;
+      var canX = /(auto|scroll)/.test(style.overflowX) && el.scrollWidth > el.clientWidth;
+      if ((dy && canY) || (dx && canX)) { el.scrollBy(dx, dy); return; }
+      el = el.parentElement;
+    }
+    window.scrollBy(dx, dy);
+  }
+  """#
+
+  private static let jsType = #"""
+  function(text, submit) {
+    var el = document.activeElement;
+    if (!el || el === document.body) {
+      el = document.querySelector('input[type="search"],input[name="search_query"],input[type="text"],textarea');
+      if (el) el.focus();
+    }
+    if (!el) return;
+    if (el.isContentEditable) {
+      el.textContent = text;
+    } else if ('value' in el) {
+      var proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      var setter = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (setter && setter.set) { setter.set.call(el, text); } else { el.value = text; }
+    }
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    if (submit) {
+      ['keydown', 'keypress', 'keyup'].forEach(function(type) {
+        el.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+      });
+      var form = el.form || (el.closest && el.closest('form'));
+      if (form) { if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); } }
+    }
+  }
+  """#
 
   // MARK: Mirroring
 

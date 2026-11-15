@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { LibraryProvider } from './src/context/LibraryContext';
 import { SubscriptionProvider, useSubscription } from './src/context/SubscriptionContext';
-import { CarProvider } from './src/context/CarContext';
+import { CarProvider, useCar } from './src/context/CarContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LibraryScreen } from './src/screens/LibraryScreen';
 import { MirrorScreen } from './src/screens/MirrorScreen';
@@ -32,6 +32,7 @@ const TABS: Array<{ id: TabId; label: string; icon: IconName; activeIcon: IconNa
 const Shell: React.FC = () => {
   const { settings, ready, update } = useSettings();
   const { isPro } = useSubscription();
+  const car = useCar();
   const [tab, setTab] = useState<TabId>('home');
   const [browser, setBrowser] = useState<{ visible: boolean; url?: string }>({ visible: false });
   const [navigate, setNavigate] = useState<{ visible: boolean; start?: NavigateStart }>({ visible: false });
@@ -84,7 +85,7 @@ const Shell: React.FC = () => {
         {tab === 'settings' ? <SettingsScreen onShowOnboarding={() => update({ onboarded: false })} /> : null}
       </View>
 
-      <NowPlayingBar onOpen={() => switchTab('library')} />
+      <NowPlayingBar onOpen={() => (car.media?.kind === 'web' ? openBrowser() : switchTab('library'))} />
 
       <SafeAreaView edges={['bottom']} style={styles.tabBar}>
         {TABS.map((item) => {
