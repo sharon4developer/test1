@@ -664,11 +664,13 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
       showMessage("This link isn't valid.")
       return
     }
+    DiagnosticsLog.shared.record("car web: opening \(DiagnosticsLog.host(of: uri))")
     showMessage("Opening…")
     ensureWebView().load(URLRequest(url: url))
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    DiagnosticsLog.shared.record("car web: loaded \(DiagnosticsLog.host(of: webView.url?.absoluteString ?? currentWebURI))")
     hideMessage()
     webView.evaluateJavaScript(ParkCastCarViewController.jsFullscreenVideo)
     applyGravity()
@@ -676,11 +678,18 @@ final class ParkCastCarViewController: UIViewController, MKMapViewDelegate, WKNa
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+    DiagnosticsLog.shared.record("car web: load failed for \(DiagnosticsLog.host(of: currentWebURI)): \(error.localizedDescription)")
     showMessage("This page couldn't load on the car screen.")
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+    DiagnosticsLog.shared.record("car web: could not open \(DiagnosticsLog.host(of: currentWebURI)): \(error.localizedDescription)")
     showMessage("This page couldn't load on the car screen.")
+  }
+
+  func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+    DiagnosticsLog.shared.record("car web: web content process ended, reloading")
+    webView.reload()
   }
 
   // MARK: Mirroring

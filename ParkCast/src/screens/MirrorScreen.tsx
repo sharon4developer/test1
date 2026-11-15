@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCar } from '../context/CarContext';
 import { useSettings } from '../context/SettingsContext';
 import { useSubscription } from '../context/SubscriptionContext';
-import { ParkCastNative } from '../native/ParkCastNative';
+import { NATIVE_UNAVAILABLE_TEXT, nativeUnavailableReason, ParkCastNative } from '../native/ParkCastNative';
 import { showRewardedAd } from '../ads/ads';
 import { FREE_LIMIT_REACHED } from '../config/brand';
 import { Card, ScreenTitle, Segmented, tap } from '../ui/components';
@@ -25,7 +25,8 @@ export const MirrorScreen: React.FC = () => {
 
   const start = async () => {
     if (!nativeAvailable) {
-      Alert.alert('Mirroring needs the iPhone app', 'Install ParkCast from TestFlight to mirror to your car.');
+      const reason = NATIVE_UNAVAILABLE_TEXT[nativeUnavailableReason ?? 'missingFromBuild'];
+      Alert.alert(reason.title, reason.detail);
       return;
     }
     if (!isPro && !mirroring) {

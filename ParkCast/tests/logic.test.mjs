@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 import { parseSmartSearch, carFriendlyUrl, normalizeUrl } from '../src/lib/smartSearch.ts';
 import { formatDistance, formatDuration, formatClock, formatSpeed, greetingFor } from '../src/lib/format.ts';
 import { parseM3u } from '../src/lib/m3u.ts';
@@ -97,6 +98,27 @@ test('Expo config wires CarPlay, mirroring and the native module', () => {
   assert.ok(fs.existsSync(path.join(root, 'modules/parkcast-native/ios/ParkCastCarPlaySceneDelegate.swift')));
   assert.ok(fs.existsSync(path.join(root, 'plugins/broadcast/SampleHandler.swift')));
   assert.equal(app.ios.infoPlist.NSLocationWhenInUseUsageDescription.length > 20, true);
+});
+
+test('native module sources are committed, so EAS builds include them', (t) => {
+  let tracked;
+  try {
+    tracked = execFileSync('git', ['ls-files', 'modules/parkcast-native', 'plugins/broadcast'], { cwd: root, encoding: 'utf8' });
+  } catch {
+    t.skip('not a git checkout');
+    return;
+  }
+  for (const file of [
+    'modules/parkcast-native/expo-module.config.json',
+    'modules/parkcast-native/ios/ParkCastNative.podspec',
+    'modules/parkcast-native/ios/ParkCastNativeModule.swift',
+    'modules/parkcast-native/ios/ParkCastCarPlaySceneDelegate.swift',
+    'plugins/broadcast/SampleHandler.swift',
+  ]) {
+    assert.ok(tracked.includes(file), `${file} is not committed; EAS would build without it`);
+  }
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  assert.equal(pkg.expo.autolinking.nativeModulesDir, './modules');
 });
 
 test('nearby categories match the native list', () => {

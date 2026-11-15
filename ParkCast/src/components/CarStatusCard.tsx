@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCar } from '../context/CarContext';
 import { colors, radius, space } from '../ui/theme';
-import type { CarMode } from '../native/ParkCastNative';
+import { NATIVE_UNAVAILABLE_TEXT, nativeUnavailableReason, type CarMode } from '../native/ParkCastNative';
 
 const MODE_LABEL: Record<CarMode, string> = {
   home: 'Showing the clock',
@@ -23,9 +23,10 @@ export const CarStatusCard: React.FC = () => {
   let title = 'Connect to CarPlay';
   let detail = 'Plug in your iPhone or connect wirelessly, then tap ParkCast on the car screen.';
 
-  if (!nativeAvailable) {
-    title = 'Preview mode';
-    detail = 'Install ParkCast from TestFlight to use your car screen.';
+  if (!nativeAvailable && nativeUnavailableReason) {
+    icon = 'alert-circle-outline';
+    tone = colors.warning;
+    ({ title, detail } = NATIVE_UNAVAILABLE_TEXT[nativeUnavailableReason]);
   } else if (carConnected) {
     icon = 'car-sport';
     tone = colors.success;
@@ -43,8 +44,8 @@ export const CarStatusCard: React.FC = () => {
         <Ionicons name={icon} size={24} color={tone} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: carConnected ? tone : colors.text }]}>{title}</Text>
-        <Text style={styles.detail} numberOfLines={2}>
+        <Text style={[styles.title, { color: carConnected || !nativeAvailable ? tone : colors.text }]}>{title}</Text>
+        <Text style={styles.detail} numberOfLines={3}>
           {detail}
         </Text>
       </View>

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 export type CarMode = 'home' | 'map' | 'video' | 'photo' | 'slideshow' | 'web' | 'mirror';
 
@@ -61,12 +62,34 @@ export interface NativeStatus {
   usesMetric: boolean;
 }
 
+export interface NativeDiagnostics {
+  appVersion: string;
+  buildNumber: string;
+  bundleId: string;
+  iosVersion: string;
+  carPlaySceneDeclared: boolean;
+  carConnected: boolean;
+  mirrorPort: number;
+  mirrorListening: boolean;
+  mirrorActive: boolean;
+  mirrorFramesReceived: number;
+  broadcastExtensionInstalled: boolean;
+  location: string;
+  hasLocationFix: boolean;
+}
+
+export type NativeUnavailableReason = 'expoGo' | 'notIos' | 'missingFromBuild';
+
 interface Subscription {
   remove: () => void;
 }
 
 interface ParkCastNativeModule {
   getStatus(): NativeStatus;
+  getDiagnostics(): NativeDiagnostics;
+  getDiagnosticsLog(): string;
+  clearDiagnosticsLog(): void;
+  logEvent(event: string): void;
   sendCarState(state: Record<string, unknown>): void;
   control(action: string, value: number): void;
   searchPlaces(query: string): Promise<PlaceResult[]>;
@@ -92,11 +115,46 @@ const native =
 /** True when running inside the real ParkCast iOS build (not Expo Go or the web preview). */
 export const isNativeAvailable = native != null;
 
+export const nativeUnavailableReason: NativeUnavailableReason | null = native
+  ? null
+  : Platform.OS !== 'ios'
+    ? 'notIos'
+    : Constants.executionEnvironment === ExecutionEnvironment.StoreClient
+      ? 'expoGo'
+      : 'missingFromBuild';
+
+export const NATIVE_UNAVAILABLE_TEXT: Record<NativeUnavailableReason, { title: string; detail: string }> = {
+  expoGo: {
+    title: 'Running in Expo Go',
+    detail: 'Expo Go cannot run CarPlay, maps search or mirroring. Open the ParkCast development build or TestFlight app instead.',
+  },
+  notIos: {
+    title: 'Preview only',
+    detail: 'Car features need the ParkCast iPhone app.',
+  },
+  missingFromBuild: {
+    title: 'Car features missing from this build',
+    detail: 'This build was made without the ParkCast native module. Rebuild it; see Settings › Diagnostics.',
+  },
+};
+
 const noopSubscription: Subscription = { remove: () => {} };
 
 export const ParkCastNative = {
   getStatus(): NativeStatus | null {
     return native ? native.getStatus() : null;
+  },
+  getDiagnostics(): NativeDiagnostics | null {
+    return native ? native.getDiagnostics() : null;
+  },
+  getDiagnosticsLog(): string {
+    return native ? native.getDiagnosticsLog() : '';
+  },
+  clearDiagnosticsLog() {
+    native?.clearDiagnosticsLog();
+  },
+  logEvent(event: string) {
+    native?.logEvent(event);
   },
   sendCarState(state: Record<string, unknown>) {
     native?.sendCarState(state);

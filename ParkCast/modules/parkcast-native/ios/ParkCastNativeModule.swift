@@ -39,6 +39,22 @@ public class ParkCastNativeModule: Module {
       ]
     }
 
+    Function("getDiagnostics") { () -> [String: Any] in
+      DiagnosticsLog.snapshot()
+    }
+
+    Function("getDiagnosticsLog") { () -> String in
+      DiagnosticsLog.shared.text()
+    }
+
+    Function("clearDiagnosticsLog") {
+      DiagnosticsLog.shared.clear()
+    }
+
+    Function("logEvent") { (event: String) in
+      DiagnosticsLog.shared.record("phone: \(event)")
+    }
+
     Function("sendCarState") { (state: [String: Any]) in
       DispatchQueue.main.async {
         CarSessionStore.shared.apply(state)
@@ -186,9 +202,18 @@ enum BroadcastPicker {
       .compactMap { $0 as? UIWindowScene }
       .flatMap { $0.windows }
       .first { $0.isKeyWindow }
+    guard let hostWindow = window else {
+      DiagnosticsLog.shared.record("mirror: no key window to show the broadcast picker")
+      return
+    }
     picker.alpha = 0.01
-    window?.addSubview(picker)
-    for case let button as UIButton in picker.subviews {
+    hostWindow.addSubview(picker)
+    let buttons = picker.subviews.compactMap { $0 as? UIButton }
+    DiagnosticsLog.shared.record("mirror: opening broadcast picker for \(picker.preferredExtension ?? "?") (extension \(DiagnosticsLog.broadcastExtensionInstalled ? "installed" : "MISSING"))")
+    if buttons.isEmpty {
+      DiagnosticsLog.shared.record("mirror: broadcast picker has no button on this iOS version")
+    }
+    for button in buttons {
       button.sendActions(for: .allTouchEvents)
     }
     DispatchQueue.main.asyncAfter(deadline: .now() + 3) {

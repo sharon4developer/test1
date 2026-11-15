@@ -44,6 +44,8 @@ final class NavigationEngine: NSObject, CLLocationManagerDelegate {
     }
   }
 
+  var authorizationStatus: CLAuthorizationStatus { manager.authorizationStatus }
+
   private var isAuthorized: Bool {
     let status = manager.authorizationStatus
     return status == .authorizedWhenInUse || status == .authorizedAlways
@@ -55,6 +57,7 @@ final class NavigationEngine: NSObject, CLLocationManagerDelegate {
   }
 
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    DiagnosticsLog.shared.record("location: permission \(DiagnosticsLog.locationStatus(manager.authorizationStatus))")
     startUpdatesIfAuthorized()
   }
 
@@ -66,7 +69,9 @@ final class NavigationEngine: NSObject, CLLocationManagerDelegate {
     onUpdate?()
   }
 
-  func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
+  func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    DiagnosticsLog.shared.record("location: error \(error.localizedDescription)")
+  }
 
   // MARK: Smart Park Lock
 

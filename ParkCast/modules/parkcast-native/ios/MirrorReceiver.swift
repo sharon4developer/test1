@@ -24,6 +24,8 @@ final class MirrorReceiver {
   private var quality: UInt8 = 0
 
   private(set) var isActive = false
+  private(set) var isListening = false
+  private(set) var framesReceived = 0
   var onFrame: ((CGImage) -> Void)?
 
   static var port: UInt16? {
@@ -38,20 +40,42 @@ final class MirrorReceiver {
   }
 
   private func startListener() {
-    guard listener == nil, let value = MirrorReceiver.port, let port = NWEndpoint.Port(rawValue: value) else { return }
+    guard listener == nil else { return }
+    guard let value = MirrorReceiver.port, let port = NWEndpoint.Port(rawValue: value) else {
+      DiagnosticsLog.shared.record("mirror: no ParkCastMirrorPort in Info.plist, receiver not started")
+      return
+    }
     let params = NWParameters.tcp
     params.requiredInterfaceType = .loopback
     params.allowLocalEndpointReuse = true
-    guard let newListener = try? NWListener(using: params, on: port) else { return }
+    let newListener: NWListener
+    do {
+      newListener = try NWListener(using: params, on: port)
+    } catch {
+      DiagnosticsLog.shared.record("mirror: listener on port \(value) failed to open: \(error.localizedDescription)")
+      queue.asyncAfter(deadline: .now() + 5) { self.startListener() }
+      return
+    }
     newListener.newConnectionHandler = { [weak self] connection in
+      DiagnosticsLog.shared.record("mirror: broadcast extension connected")
       self?.accept(connection)
     }
     newListener.stateUpdateHandler = { [weak self] state in
       guard let self = self else { return }
-      if case .failed = state {
+      switch state {
+      case .ready:
+        self.isListening = true
+        DiagnosticsLog.shared.record("mirror: listening on 127.0.0.1:\(value)")
+      case .failed(let error):
+        self.isListening = false
+        DiagnosticsLog.shared.record("mirror: listener failed: \(error.localizedDescription), retrying")
         self.listener?.cancel()
         self.listener = nil
         self.queue.asyncAfter(deadline: .now() + 2) { self.startListener() }
+      case .cancelled:
+        self.isListening = false
+      default:
+        break
       }
     }
     listener = newListener
@@ -156,7 +180,10 @@ final class MirrorReceiver {
         )
       }
     }
-    guard status == noErr, let description = newDescription else { return }
+    guard status == noErr, let description = newDescription else {
+      DiagnosticsLog.shared.record("mirror: bad H.264 parameter sets (status \(status))")
+      return
+    }
     if let current = formatDescription, decoder != nil, CMFormatDescriptionEqual(current, otherFormatDescription: description) {
       return
     }
@@ -185,6 +212,10 @@ final class MirrorReceiver {
     )
     if status == noErr {
       decoder = session
+      let size = CMVideoFormatDescriptionGetDimensions(description)
+      DiagnosticsLog.shared.record("mirror: decoder ready \(size.width)x\(size.height)")
+    } else {
+      DiagnosticsLog.shared.record("mirror: decoder failed to start (status \(status))")
     }
   }
 
@@ -241,8 +272,10 @@ final class MirrorReceiver {
     let image = CIImage(cvPixelBuffer: pixelBuffer).oriented(orientation)
     guard let cgImage = ciContext.createCGImage(image, from: image.extent) else { return }
     DispatchQueue.main.async {
+      self.framesReceived += 1
       if !self.isActive {
         self.isActive = true
+        DiagnosticsLog.shared.record("mirror: first frame shown")
         CarSessionStore.shared.mirrorStateChanged(true)
       }
       self.onFrame?(cgImage)
@@ -251,6 +284,7 @@ final class MirrorReceiver {
 
   private func connectionEnded() {
     resetDecoder()
+    DiagnosticsLog.shared.record("mirror: broadcast ended")
     DispatchQueue.main.async {
       if self.isActive {
         self.isActive = false

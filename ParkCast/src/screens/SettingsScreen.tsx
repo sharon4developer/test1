@@ -5,6 +5,7 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { ParkCastNative } from '../native/ParkCastNative';
 import { ENV } from '../config/env';
 import { AdBanner } from '../ads/ads';
+import { DiagnosticsSection } from '../components/DiagnosticsSection';
 import { ListRow, ScreenTitle, Section, Segmented, ToggleRow } from '../ui/components';
 import { colors, space } from '../ui/theme';
 
@@ -172,6 +173,8 @@ export const SettingsScreen: React.FC<{ onShowOnboarding: () => void }> = ({ onS
         />
         {settings.webScreen ? <ListRow icon="key-outline" title="Screen code" value={settings.webScreenCode} last /> : null}
       </Section>
+
+      <DiagnosticsSection />
 
       <Section title="About">
         <ListRow icon="help-circle-outline" title="Show the welcome tour" onPress={onShowOnboarding} chevron />

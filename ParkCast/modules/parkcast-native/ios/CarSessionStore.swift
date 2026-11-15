@@ -29,6 +29,10 @@ final class CarSessionStore {
   func start() {
     guard !started else { return }
     started = true
+    let info = Bundle.main.infoDictionary ?? [:]
+    DiagnosticsLog.shared.record(
+      "app: ParkCast \(info["CFBundleShortVersionString"] as? String ?? "?") (\(info["CFBundleVersion"] as? String ?? "?")), iOS \(UIDevice.current.systemVersion), CarPlay scene \(DiagnosticsLog.carPlaySceneDeclared ? "declared" : "MISSING"), broadcast extension \(DiagnosticsLog.broadcastExtensionInstalled ? "installed" : "MISSING")"
+    )
     navigation.start()
     mirror.start()
   }
@@ -47,6 +51,7 @@ final class CarSessionStore {
 
   func setCarConnected(_ connected: Bool) {
     isCarConnected = connected
+    DiagnosticsLog.shared.record(connected ? "carplay: connected" : "carplay: disconnected")
     emit("onCarPlayStatus", ["connected": connected])
   }
 
