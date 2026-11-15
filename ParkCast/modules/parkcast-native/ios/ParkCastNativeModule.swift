@@ -75,6 +75,26 @@ public class ParkCastNativeModule: Module {
       }
     }
 
+    AsyncFunction("suggestPlaces") { (query: String, promise: Promise) in
+      DispatchQueue.main.async {
+        CarSessionStore.shared.navigation.suggest(query) { results in
+          promise.resolve(results as Any)
+        }
+      }
+    }
+
+    AsyncFunction("resolveSuggestion") { (id: String, promise: Promise) in
+      DispatchQueue.main.async {
+        CarSessionStore.shared.navigation.resolveSuggestion(id) { results, error in
+          if let results = results {
+            promise.resolve(results as Any)
+          } else {
+            promise.reject("ERR_SUGGESTION", error ?? "No place found.")
+          }
+        }
+      }
+    }
+
     AsyncFunction("searchNearby") { (category: String, promise: Promise) in
       DispatchQueue.main.async {
         CarSessionStore.shared.navigation.searchNearby(category) { results, error in

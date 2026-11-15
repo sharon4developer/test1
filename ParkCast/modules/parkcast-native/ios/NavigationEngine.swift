@@ -104,6 +104,42 @@ final class NavigationEngine: NSObject, CLLocationManagerDelegate {
 
   private var searchCenter: CLLocation? { lastLocation ?? manager.location }
 
+  private let autocomplete = PlaceAutocomplete()
+
+  func suggest(_ query: String, completion: @escaping ([[String: Any]]) -> Void) {
+    autocomplete.suggest(query, near: searchCenter, completion: completion)
+  }
+
+  func resolveSuggestion(_ id: String, completion: @escaping ([[String: Any]]?, String?) -> Void) {
+    autocomplete.resolve(id, near: searchCenter) { [weak self] items, error in
+      guard let self = self, !items.isEmpty else {
+        completion(nil, error)
+        return
+      }
+      completion(self.serialize(items, sortByDistance: items.count > 1), nil)
+    }
+  }
+
+  /// Route line for the phone map, thinned so the bridge payload stays small.
+  static func coordinates(of polyline: MKPolyline, maxPoints: Int = 400) -> [[Double]] {
+    let count = polyline.pointCount
+    guard count > 0 else { return [] }
+    let points = polyline.points()
+    let step = max(1, Int((Double(count) / Double(maxPoints)).rounded(.up)))
+    var result: [[Double]] = []
+    var index = 0
+    while index < count {
+      let coordinate = points[index].coordinate
+      result.append([coordinate.latitude, coordinate.longitude])
+      index += step
+    }
+    let last = points[count - 1].coordinate
+    if result.last.map({ $0[0] != last.latitude || $0[1] != last.longitude }) ?? true {
+      result.append([last.latitude, last.longitude])
+    }
+    return result
+  }
+
   func searchPlaces(_ query: String, completion: @escaping ([[String: Any]]) -> Void) {
     let request = MKLocalSearch.Request()
     request.naturalLanguageQuery = query
@@ -260,6 +296,7 @@ final class NavigationEngine: NSObject, CLLocationManagerDelegate {
             "expectedTravelTime": route.expectedTravelTime,
             "advisories": route.advisoryNotices,
             "steps": steps,
+            "coordinates": NavigationEngine.coordinates(of: route.polyline),
           ])
         }
         completion(payload, nil)

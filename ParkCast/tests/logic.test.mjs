@@ -8,6 +8,7 @@ import { parseSmartSearch, carFriendlyUrl, normalizeUrl } from '../src/lib/smart
 import { formatDistance, formatDuration, formatClock, formatSpeed, greetingFor } from '../src/lib/format.ts';
 import { parseM3u } from '../src/lib/m3u.ts';
 import { formatWeather, weatherSummary } from '../src/lib/weather.ts';
+import { normalizeSuggestions, regionForPoints, suggestionQuery, toLatLngs } from '../src/lib/places.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
 const require = createRequire(import.meta.url);
@@ -98,6 +99,45 @@ test('Expo config wires CarPlay, mirroring and the native module', () => {
   assert.ok(fs.existsSync(path.join(root, 'modules/parkcast-native/ios/ParkCastCarPlaySceneDelegate.swift')));
   assert.ok(fs.existsSync(path.join(root, 'plugins/broadcast/SampleHandler.swift')));
   assert.equal(app.ios.infoPlist.NSLocationWhenInUseUsageDescription.length > 20, true);
+});
+
+test('route coordinates become map points and a fitting region', () => {
+  assert.deepEqual(toLatLngs([[43.1, -79.2], [43.2, -79.3]]), [
+    { latitude: 43.1, longitude: -79.2 },
+    { latitude: 43.2, longitude: -79.3 },
+  ]);
+  assert.deepEqual(toLatLngs([[91, 0], [NaN, 1], [1], [10, 20]]), [{ latitude: 10, longitude: 20 }]);
+  assert.deepEqual(toLatLngs(undefined), []);
+  const region = regionForPoints([{ latitude: 10, longitude: 20 }, { latitude: 12, longitude: 24 }], 1);
+  assert.deepEqual(region, { latitude: 11, longitude: 22, latitudeDelta: 2, longitudeDelta: 4 });
+  assert.equal(regionForPoints([]), null);
+  assert.equal(regionForPoints([{ latitude: 5, longitude: 5 }]).latitudeDelta, 0.01);
+});
+
+test('live suggestions only for places, deduplicated and capped', () => {
+  assert.equal(suggestionQuery(parseSmartSearch('ban'), 'ban'), 'ban');
+  assert.equal(suggestionQuery(parseSmartSearch('take me to union station'), 'take me to union station'), 'union station');
+  assert.equal(suggestionQuery(parseSmartSearch('b'), 'b'), null);
+  assert.equal(suggestionQuery(parseSmartSearch('youtube.com'), 'youtube.com'), null);
+  assert.equal(suggestionQuery(parseSmartSearch('mirror my phone'), 'mirror my phone'), null);
+  const raw = [
+    { id: '1', title: 'Bank of Montreal', subtitle: 'King St', isQuery: false },
+    { id: '2', title: 'bank of montreal ', subtitle: 'King St', isQuery: false },
+    { id: '3', title: '  ', subtitle: '', isQuery: true },
+    { id: '4', title: 'Banks', subtitle: '', isQuery: true },
+  ];
+  assert.deepEqual(normalizeSuggestions(raw).map((item) => item.id), ['1', '4']);
+  assert.equal(normalizeSuggestions(raw, 1).length, 1);
+  assert.deepEqual(normalizeSuggestions(null), []);
+});
+
+test('native routes send polyline coordinates and live suggestions exist', () => {
+  const swift = fs.readFileSync(path.join(root, 'modules/parkcast-native/ios/NavigationEngine.swift'), 'utf8');
+  assert.match(swift, /"coordinates": NavigationEngine\.coordinates\(of: route\.polyline\)/);
+  const module = fs.readFileSync(path.join(root, 'modules/parkcast-native/ios/ParkCastNativeModule.swift'), 'utf8');
+  for (const fn of ['suggestPlaces', 'resolveSuggestion', 'getDiagnostics', 'getDiagnosticsLog']) {
+    assert.match(module, new RegExp(`Function\\("${fn}"\\)`), `${fn} missing from the native module`);
+  }
 });
 
 test('native module sources are committed, so EAS builds include them', (t) => {

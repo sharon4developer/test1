@@ -33,6 +33,16 @@ export interface RouteOption {
   expectedTravelTime: number;
   advisories: string[];
   steps: RouteStep[];
+  /** [latitude, longitude] pairs along the route. */
+  coordinates?: Array<[number, number]>;
+}
+
+export interface PlaceSuggestion {
+  id: string;
+  title: string;
+  subtitle: string;
+  /** A search term such as "coffee" rather than one specific place. */
+  isQuery: boolean;
 }
 
 export interface RouteProgress {
@@ -93,6 +103,8 @@ interface ParkCastNativeModule {
   sendCarState(state: Record<string, unknown>): void;
   control(action: string, value: number): void;
   searchPlaces(query: string): Promise<PlaceResult[]>;
+  suggestPlaces(query: string): Promise<PlaceSuggestion[]>;
+  resolveSuggestion(id: string): Promise<PlaceResult[]>;
   searchNearby(category: string): Promise<PlaceResult[]>;
   getParkedCar(): ParkedCar | null;
   saveParkedCarHere(): Promise<boolean>;
@@ -138,6 +150,11 @@ export const NATIVE_UNAVAILABLE_TEXT: Record<NativeUnavailableReason, { title: s
   },
 };
 
+function unavailableMessage(feature: string): string {
+  if (nativeUnavailableReason === 'expoGo') return `${feature} doesn't work in Expo Go. Open the ParkCast development build.`;
+  return `${feature} needs the ParkCast iPhone app.`;
+}
+
 const noopSubscription: Subscription = { remove: () => {} };
 
 export const ParkCastNative = {
@@ -165,8 +182,15 @@ export const ParkCastNative = {
   async searchPlaces(query: string): Promise<PlaceResult[]> {
     return native ? native.searchPlaces(query) : [];
   },
+  async suggestPlaces(query: string): Promise<PlaceSuggestion[]> {
+    return native ? native.suggestPlaces(query) : [];
+  },
+  async resolveSuggestion(id: string): Promise<PlaceResult[]> {
+    if (!native) throw new Error(unavailableMessage('Search'));
+    return native.resolveSuggestion(id);
+  },
   async searchNearby(category: string): Promise<PlaceResult[]> {
-    if (!native) throw new Error('Nearby search needs the ParkCast iPhone app.');
+    if (!native) throw new Error(unavailableMessage('Nearby search'));
     return native.searchNearby(category);
   },
   getParkedCar(): ParkedCar | null {
@@ -185,7 +209,7 @@ export const ParkCastNative = {
     native?.cancelReminder();
   },
   async getRoutes(place: PlaceResult): Promise<RouteOption[]> {
-    if (!native) throw new Error('Directions need the ParkCast iPhone app.');
+    if (!native) throw new Error(unavailableMessage('Directions'));
     return native.getRoutes(place.latitude, place.longitude, place.name);
   },
   async startNavigation(index: number): Promise<boolean> {
@@ -195,14 +219,14 @@ export const ParkCastNative = {
     if (native) await native.stopNavigation();
   },
   async startListening(): Promise<void> {
-    if (!native) throw new Error('Voice needs the ParkCast iPhone app.');
+    if (!native) throw new Error(unavailableMessage('Voice'));
     await native.startListening();
   },
   stopListening() {
     native?.stopListening();
   },
   async showBroadcastPicker(): Promise<void> {
-    if (!native) throw new Error('Mirroring needs the ParkCast iPhone app.');
+    if (!native) throw new Error(unavailableMessage('Mirroring'));
     await native.showBroadcastPicker();
   },
   async clearWebData(): Promise<void> {
