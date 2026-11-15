@@ -1,0 +1,6 @@
+{
+  "name": "parkcast-native",
+  "version": "2.0.0",
+  "description": "ParkCast CarPlay scene, navigation, mirroring receiver and voice engine",
+  "private": true
+}
