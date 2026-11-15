@@ -25,6 +25,33 @@ npx expo prebuild --platform ios --clean   # inspect the generated Xcode project
 npm run relay                              # local web services on :4848
 ```
 
+## Test on your iPhone and in the car (no TestFlight per change)
+
+Expo Go cannot load ParkCast's native code (CarPlay scene, MapKit search, mirroring extension). If the Home screen says **Running in Expo Go** or **Car features missing from this build**, you are not on a real ParkCast build. Use a development build instead; you only rebuild it when Swift or native config changes.
+
+**One time:**
+
+```bash
+npm install
+npx eas-cli login
+npx eas-cli device:create                                  # open the link on your iPhone to register it
+npx eas-cli build --platform ios --profile development     # about 15 minutes
+```
+
+Open the build link from the Expo dashboard on your iPhone and install **ParkCast** (Settings › General › VPN & Device Management may ask you to trust it, and iOS asks you to turn on Developer Mode once).
+
+**Every change after that, from the laptop:**
+
+```bash
+npx expo start --dev-client --tunnel
+```
+
+Open the ParkCast development app on the iPhone, scan the QR code, and the latest JavaScript loads in seconds. Plug the iPhone into the car and the CarPlay screen runs the same code. Save a file on the laptop and the app reloads.
+
+**When something fails in the car:** reproduce it, then open Settings › Diagnostics on the iPhone. It shows whether the native module, CarPlay scene, broadcast extension and mirror port are working; **Share diagnostics log** sends the event log (CarPlay connect, broadcast start and frames, car web page loads and errors).
+
+Rebuild the development app (`--profile development`) only after changing anything in `modules/`, `plugins/`, `app.json` plugins, or native dependencies. Ship to TestFlight with the production profile once the car test passes.
+
 ## Release checklist
 
 1. **App Store Connect:** create four auto-renewable subscriptions in one group, with product IDs `parkcast.weekly`, `parkcast.monthly`, `parkcast.quarterly` and `parkcast.yearly` (the yearly plan has a 3-day free trial).
