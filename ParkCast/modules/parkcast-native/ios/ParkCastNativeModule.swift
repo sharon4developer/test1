@@ -218,10 +218,11 @@ enum BroadcastPicker {
     if let bundleId = Bundle.main.bundleIdentifier {
       picker.preferredExtension = bundleId + ".broadcast"
     }
-    let window = UIApplication.shared.connectedScenes
+    let windows = UIApplication.shared.connectedScenes
       .compactMap { $0 as? UIWindowScene }
+      .filter { $0.session.role == .windowApplication }
       .flatMap { $0.windows }
-      .first { $0.isKeyWindow }
+    let window = windows.first { $0.isKeyWindow } ?? windows.first { !$0.isHidden } ?? windows.first
     guard let hostWindow = window else {
       DiagnosticsLog.shared.record("mirror: no key window to show the broadcast picker")
       return
