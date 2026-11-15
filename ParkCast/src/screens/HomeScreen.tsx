@@ -3,12 +3,14 @@ import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, T
 import { Ionicons } from '@expo/vector-icons';
 import { useCar } from '../context/CarContext';
 import { useLibrary } from '../context/LibraryContext';
-import { useSettings, type NavApp } from '../context/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useMediaPicker } from '../hooks/useMediaPicker';
 import { parseSmartSearch, youtubeSearchUrl, type SmartCommand } from '../lib/smartSearch';
-import { formatArrival, formatDistance, formatDuration, greetingFor } from '../lib/format';
-import type { PlaceResult } from '../native/ParkCastNative';
+import { formatDistance, greetingFor } from '../lib/format';
+import { isNativeAvailable, NATIVE_UNAVAILABLE_TEXT, nativeUnavailableReason, type PlaceResult } from '../native/ParkCastNative';
+import { usePlaceSuggestions } from '../hooks/usePlaceSuggestions';
+import type { NavigateStart } from './NavigateScreen';
 import { ActionTile, Badge, Card, ListRow, SearchBar, tap } from '../ui/components';
 import { colors, radius, space, text } from '../ui/theme';
 import { CarStatusCard } from '../components/CarStatusCard';
@@ -24,20 +26,16 @@ const appIcon = require('../../assets/icon.png');
 interface HomeScreenProps {
   onNavigate: (tab: TabId) => void;
   onOpenBrowser: (url?: string) => void;
+  onOpenNavigate: (start?: NavigateStart) => void;
   onOpenVoice: () => void;
   pendingQuery: string | null;
   onPendingHandled: () => void;
 }
 
-const NAV_APPS: Array<{ id: NavApp; label: string }> = [
-  { id: 'apple', label: 'Apple Maps' },
-  { id: 'google', label: 'Google Maps' },
-  { id: 'waze', label: 'Waze' },
-];
-
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigate,
   onOpenBrowser,
+  onOpenNavigate,
   onOpenVoice,
   pendingQuery,
   onPendingHandled,
@@ -51,42 +49,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [query, setQuery] = useState('');
   const [searchedFor, setSearchedFor] = useState('');
   const [results, setResults] = useState<PlaceResult[] | null>(null);
-  const [nearbyMode, setNearbyMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
   const say = (message: string) => setNotice(message);
 
-  const findNearby = useCallback(
-    async (categoryId: string, label: string) => {
-      tap();
-      setSearchedFor(label);
-      setNearbyMode(true);
-      car.clearPlannedRoute();
-      setResults([]);
-      if (car.locationStatus !== 'granted' && !(await car.requestLocation())) {
-        say('Allow location to find places near you.');
-        setResults(null);
-        return;
-      }
-      setBusy(true);
-      try {
-        setResults(await car.searchNearby(categoryId));
-      } catch (error: any) {
-        say(error?.message ?? 'Search failed.');
-        setResults([]);
-      } finally {
-        setBusy(false);
-      }
-    },
-    [car]
-  );
-
   const findPlaces = useCallback(
     async (placeQuery: string) => {
       setSearchedFor(placeQuery);
-      setNearbyMode(false);
-      car.clearPlannedRoute();
       if (!car.nativeAvailable) {
         setResults([]);
         return;
@@ -197,12 +167,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           setQuery('');
           return;
         case 'navigate':
+          setQuery('');
+          setResults(null);
+          onOpenNavigate({ type: 'query', query: intent.query });
+          return;
         case 'search':
           findPlaces(intent.query);
           return;
       }
     },
-    [findPlaces, onOpenBrowser, runCommand]
+    [findPlaces, onOpenBrowser, onOpenNavigate, runCommand]
   );
 
   useEffect(() => {
@@ -217,21 +191,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setQuery('');
     setResults(null);
     setSearchedFor('');
-    car.clearPlannedRoute();
   };
 
-  const choosePlace = async (place: PlaceResult) => {
-    setBusy(true);
-    try {
-      await car.planRoute(place);
-    } catch (error: any) {
-      say(error?.message ?? 'No driving route found.');
-    } finally {
-      setBusy(false);
-    }
-  };
+  const choosePlace = (place: PlaceResult) => onOpenNavigate({ type: 'place', place });
 
-  const showingSearch = results !== null || car.plannedRoute !== null;
+  const showingSearch = results !== null;
+  const { suggestions } = usePlaceSuggestions(query, !showingSearch);
+  const unavailable = !isNativeAvailable ? NATIVE_UNAVAILABLE_TEXT[nativeUnavailableReason ?? 'missingFromBuild'] : null;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -264,12 +230,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       />
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
+      {!showingSearch && suggestions.length ? (
+        <Card padded={false} style={styles.suggestions}>
+          {suggestions.map((suggestion, index) => (
+            <ListRow
+              key={suggestion.id}
+              testID={`home-suggestion-${index}`}
+              icon={suggestion.isQuery ? 'search' : 'location'}
+              iconColor={suggestion.isQuery ? colors.textSecondary : colors.danger}
+              title={suggestion.title}
+              subtitle={suggestion.subtitle}
+              onPress={() => {
+                setQuery('');
+                onOpenNavigate({ type: 'suggestion', suggestion });
+              }}
+              last={index === suggestions.length - 1}
+            />
+          ))}
+        </Card>
+      ) : null}
+
       {showingSearch ? (
         <View style={styles.block}>
           <View style={styles.resultsHeader}>
-            <Text style={text.sectionLabel}>
-              {car.plannedRoute ? 'Routes' : nearbyMode ? `${searchedFor} near you` : `Results for “${searchedFor}”`}
-            </Text>
+            <Text style={text.sectionLabel}>{`Results for “${searchedFor}”`}</Text>
             <Pressable onPress={clearSearch} hitSlop={12}>
               <Text style={styles.link}>Close</Text>
             </Pressable>
@@ -277,49 +261,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {busy ? <ActivityIndicator style={{ marginVertical: space(6) }} color={colors.primary} /> : null}
 
-          {car.plannedRoute ? (
-            <Card padded={false}>
-              <View style={styles.routeHeader}>
-                <Text style={styles.placeName}>{car.plannedRoute.place.name}</Text>
-                {car.plannedRoute.place.address ? <Text style={text.secondary}>{car.plannedRoute.place.address}</Text> : null}
-              </View>
-              {car.plannedRoute.options.map((route, index) => (
-                <Pressable
-                  key={route.index}
-                  onPress={() => {
-                    tap();
-                    car.startRoute(route.index);
-                  }}
-                  style={[styles.routeRow, index === 0 && styles.routeRowBest]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.routeTime, index === 0 && { color: colors.success }]}>
-                      {formatDuration(route.expectedTravelTime)}
-                    </Text>
-                    <Text style={text.secondary}>
-                      {formatDistance(route.distance, settings.units)}
-                      {route.name ? ` · via ${route.name}` : ''} · Arrive {formatArrival(route.expectedTravelTime)}
-                    </Text>
-                    {route.advisories[0] ? <Text style={styles.advisory}>{route.advisories[0]}</Text> : null}
-                  </View>
-                  <View style={styles.goButton}>
-                    <Text style={styles.goText}>Go</Text>
-                  </View>
-                </Pressable>
-              ))}
-              <View style={styles.otherApps}>
-                {NAV_APPS.map((app) => (
-                  <Pressable
-                    key={app.id}
-                    style={styles.otherApp}
-                    onPress={() => car.plannedRoute && car.openInNavApp(car.plannedRoute.place, app.id)}
-                  >
-                    <Text style={styles.otherAppText}>{app.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </Card>
-          ) : !busy && results ? (
+          {!busy && results ? (
             <Card padded={false}>
               {results.map((place) => (
                 <ListRow
@@ -331,63 +273,57 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   onPress={() => choosePlace(place)}
                 />
               ))}
-              {!results.length && !nearbyMode ? (
+              {!results.length ? (
                 <ListRow
                   icon="map"
-                  title={car.nativeAvailable ? 'No places found nearby' : 'Search in Apple Maps'}
-                  subtitle={car.nativeAvailable ? 'Try a name, address or category' : searchedFor}
+                  title={unavailable ? 'Search in Apple Maps' : 'No places found nearby'}
+                  subtitle={unavailable ? unavailable.title : 'Try a name, address or category'}
                   onPress={
-                    car.nativeAvailable
-                      ? undefined
-                      : () => onOpenBrowser(`https://maps.apple.com/?q=${encodeURIComponent(searchedFor)}`)
+                    unavailable ? () => Linking.openURL(`http://maps.apple.com/?q=${encodeURIComponent(searchedFor)}`).catch(() => {}) : undefined
                   }
                 />
               ) : null}
-              {nearbyMode ? (
-                !results.length ? <ListRow icon="search" title={`No ${searchedFor.toLowerCase()} found nearby`} last /> : null
-              ) : (
-                <>
-                  <ListRow
-                    icon="logo-youtube"
-                    iconColor="#FF0000"
-                    title={`YouTube: ${searchedFor}`}
-                    onPress={() => onOpenBrowser(youtubeSearchUrl(searchedFor))}
-                    chevron
-                  />
-                  <ListRow
-                    icon="globe-outline"
-                    title={`Search the web for “${searchedFor}”`}
-                    onPress={() => onOpenBrowser(`https://www.google.com/search?q=${encodeURIComponent(searchedFor)}`)}
-                    chevron
-                    last
-                  />
-                </>
-              )}
+              <ListRow
+                icon="logo-youtube"
+                iconColor="#FF0000"
+                title={`YouTube: ${searchedFor}`}
+                onPress={() => onOpenBrowser(youtubeSearchUrl(searchedFor))}
+                chevron
+              />
+              <ListRow
+                icon="globe-outline"
+                title={`Search the web for “${searchedFor}”`}
+                onPress={() => onOpenBrowser(`https://www.google.com/search?q=${encodeURIComponent(searchedFor)}`)}
+                chevron
+                last
+              />
             </Card>
           ) : null}
         </View>
       ) : (
         <>
-          {car.nativeAvailable ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.nearbyRow}
-              contentContainerStyle={{ gap: space(2) }}
-            >
-              {NEARBY_CATEGORIES.map((category) => (
-                <Pressable
-                  key={category.id}
-                  testID={`nearby-${category.id}`}
-                  style={styles.nearbyChip}
-                  onPress={() => findNearby(category.id, category.label)}
-                >
-                  <Ionicons name={category.icon} size={16} color={category.color} />
-                  <Text style={styles.placeChipText}>{category.label}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          ) : null}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.nearbyRow}
+            contentContainerStyle={{ gap: space(2), paddingRight: space(10) }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {NEARBY_CATEGORIES.map((category) => (
+              <Pressable
+                key={category.id}
+                testID={`nearby-${category.id}`}
+                style={styles.nearbyChip}
+                onPress={() => {
+                  tap();
+                  onOpenNavigate({ type: 'category', id: category.id, label: category.label });
+                }}
+              >
+                <Ionicons name={category.icon} size={16} color={category.color} />
+                <Text style={styles.placeChipText}>{category.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
 
           <View style={styles.block}>
             <CarStatusCard />
@@ -398,6 +334,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </View>
 
           <View style={[styles.block, { gap: space(3) }]}>
+            <ActionTile
+              testID="home-navigate"
+              icon="navigate"
+              title="Navigate"
+              subtitle={car.guidance?.active ? 'Route in progress, tap to view' : 'Search places, see routes, turn-by-turn on the car'}
+              color="#34C759"
+              onPress={() => onOpenNavigate()}
+            />
             <ActionTile
               testID="home-mirror"
               icon="phone-portrait-outline"
@@ -465,24 +409,7 @@ const styles = StyleSheet.create({
   block: { marginTop: space(6) },
   resultsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space(2) },
   link: { color: colors.primary, fontWeight: '700', fontSize: 15 },
-  routeHeader: { padding: space(4), borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  placeName: { fontSize: 20, fontWeight: '800', color: colors.text },
-  routeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: space(4),
-    gap: space(3),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  routeRowBest: { backgroundColor: '#F3FBF6' },
-  routeTime: { fontSize: 22, fontWeight: '800', color: colors.text },
-  advisory: { fontSize: 12, color: colors.warning, marginTop: 4, fontWeight: '600' },
-  goButton: { backgroundColor: colors.success, borderRadius: radius.pill, paddingHorizontal: space(6), paddingVertical: space(3) },
-  goText: { color: colors.white, fontWeight: '800', fontSize: 17 },
-  otherApps: { flexDirection: 'row', gap: space(2), padding: space(3), flexWrap: 'wrap' },
-  otherApp: { backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: space(3), paddingVertical: space(2) },
-  otherAppText: { color: colors.textSecondary, fontWeight: '700', fontSize: 13 },
+  suggestions: { marginTop: space(3) },
   placeChip: {
     flexDirection: 'row',
     alignItems: 'center',

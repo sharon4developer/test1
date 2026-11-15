@@ -140,6 +140,18 @@ test('native routes send polyline coordinates and live suggestions exist', () =>
   }
 });
 
+test('Home shows nearby chips always, live suggestions, and Navigate above Mirror', () => {
+  const home = fs.readFileSync(path.join(root, 'src/screens/HomeScreen.tsx'), 'utf8');
+  assert.ok(home.indexOf('testID="home-navigate"') > 0);
+  assert.ok(home.indexOf('testID="home-navigate"') < home.indexOf('testID="home-mirror"'));
+  assert.doesNotMatch(home, /nativeAvailable \? \(\s*<ScrollView\s+horizontal/);
+  assert.match(home, /usePlaceSuggestions\(/);
+  const navigate = fs.readFileSync(path.join(root, 'src/screens/NavigateScreen.tsx'), 'utf8');
+  assert.match(navigate, /usePlaceSuggestions\(/);
+  assert.match(navigate, /NEARBY_CATEGORIES\.map/);
+  assert.ok(fs.existsSync(path.join(root, 'src/components/NavMap.web.tsx')), 'web needs a map fallback');
+});
+
 test('native module sources are committed, so EAS builds include them', (t) => {
   let tracked;
   try {

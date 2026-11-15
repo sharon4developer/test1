@@ -12,6 +12,7 @@ import { LibraryScreen } from './src/screens/LibraryScreen';
 import { MirrorScreen } from './src/screens/MirrorScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { BrowserScreen } from './src/screens/BrowserScreen';
+import { NavigateScreen, type NavigateStart } from './src/screens/NavigateScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { PaywallModal } from './src/screens/PaywallModal';
 import { VoiceModal } from './src/screens/VoiceModal';
@@ -33,6 +34,7 @@ const Shell: React.FC = () => {
   const { isPro } = useSubscription();
   const [tab, setTab] = useState<TabId>('home');
   const [browser, setBrowser] = useState<{ visible: boolean; url?: string }>({ visible: false });
+  const [navigate, setNavigate] = useState<{ visible: boolean; start?: NavigateStart }>({ visible: false });
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
   const previousTab = useRef<TabId>('home');
@@ -50,6 +52,7 @@ const Shell: React.FC = () => {
   };
 
   const openBrowser = (url?: string) => setBrowser({ visible: true, url });
+  const openNavigate = (start?: NavigateStart) => setNavigate({ visible: true, start });
 
   if (!ready) {
     return (
@@ -70,6 +73,7 @@ const Shell: React.FC = () => {
           <HomeScreen
             onNavigate={switchTab}
             onOpenBrowser={openBrowser}
+            onOpenNavigate={openNavigate}
             onOpenVoice={() => setVoiceOpen(true)}
             pendingQuery={pendingQuery}
             onPendingHandled={() => setPendingQuery(null)}
@@ -102,6 +106,7 @@ const Shell: React.FC = () => {
       </SafeAreaView>
 
       <BrowserScreen visible={browser.visible} initialUrl={browser.url} onClose={() => setBrowser({ visible: false })} />
+      <NavigateScreen visible={navigate.visible} start={navigate.start} onClose={() => setNavigate({ visible: false })} />
       <VoiceModal
         visible={voiceOpen}
         onClose={() => setVoiceOpen(false)}
